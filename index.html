@@ -591,6 +591,39 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
+// Web app uses a fixed anonymous user_id so RLS policies are satisfied.
+// This matches the pattern used by the mobile app's guest/anon session.
+// Replace this with auth.uid() if you add login later.
+const WEB_USER_ID = 'web-app-00000000-0000-0000-0000-000000000001';
+
+// Sign in anonymously so auth.uid() works with RLS policies
+async function initAuth() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) {
+      // Try anonymous sign in
+      const { data, error } = await db.auth.signInAnonymously();
+      if (error) {
+        console.warn('Anonymous auth failed, using fixed user_id:', error.message);
+      } else {
+        console.log('Signed in anonymously:', data.user?.id);
+      }
+    }
+  } catch(e) {
+    console.warn('Auth init failed:', e.message);
+  }
+}
+
+// Get current user id (anonymous or fixed fallback)
+async function getUserId() {
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    return user?.id || WEB_USER_ID;
+  } catch(e) {
+    return WEB_USER_ID;
+  }
+}
+
 // Sync status helpers
 function setSyncStatus(state, msg) {
   const dot = document.getElementById('syncDot');
@@ -609,36 +642,54 @@ function setSyncStatus(state, msg) {
 // Generic Supabase helpers
 async function sbSelect(table, filters={}) {
   // Each table uses a different timestamp column for ordering
-  const orderCol = {
+  const orderCols = {
     'vitals':              'recorded_at',
     'fitness_logs':        'logged_at',
     'meals':               'created_at',
     'family_members':      'created_at',
     'health_reports':      'sent_at',
-    'physician_settings':  'updated_at',
+    'physician_settings':  'id',
     'insights':            'generated_at',
-  }[table] || 'created_at';
+  };
+  const orderCol = orderCols[table] || 'created_at';
 
   let q = db.from(table).select('*');
   for (const [col, val] of Object.entries(filters)) q = q.eq(col, val);
-  const { data, error } = await q.order(orderCol, { ascending: false });
-  if (error) { console.error('sbSelect', table, error); return []; }
+  // Try with order first, fall back to no order if column missing
+  let { data, error } = await q.order(orderCol, { ascending: false });
+  if (error) {
+    // Retry without ordering
+    let q2 = db.from(table).select('*');
+    for (const [col, val] of Object.entries(filters)) q2 = q2.eq(col, val);
+    const result2 = await q2;
+    if (result2.error) { console.error('sbSelect', table, result2.error); return []; }
+    return result2.data || [];
+  }
   return data || [];
 }
 
 async function sbSelectSingle(table, filters={}) {
-  const orderCol = {
-    'vitals':              'recorded_at',
-    'fitness_logs':        'logged_at',
-    'meals':               'created_at',
-    'family_members':      'created_at',
-    'health_reports':      'sent_at',
-    'physician_settings':  'updated_at',
-  }[table] || 'created_at';
+  // Tables that should NOT use ordering (no reliable timestamp column)
+  const noOrderTables = ['physician_settings', 'notification_prefs', 'profiles'];
 
   let q = db.from(table).select('*');
   for (const [col, val] of Object.entries(filters)) q = q.eq(col, val);
-  const { data, error } = await q.order(orderCol, { ascending: false }).limit(1).maybeSingle();
+  q = q.limit(1);
+
+  // Only add ordering for tables that have a known timestamp
+  if (!noOrderTables.includes(table)) {
+    const orderCols = {
+      'vitals':          'recorded_at',
+      'fitness_logs':    'logged_at',
+      'meals':           'created_at',
+      'family_members':  'created_at',
+      'health_reports':  'sent_at',
+    };
+    const orderCol = orderCols[table] || 'created_at';
+    q = q.order(orderCol, { ascending: false });
+  }
+
+  const { data, error } = await q.maybeSingle();
   if (error) { console.error('sbSelectSingle', table, error); return null; }
   return data;
 }
@@ -872,8 +923,8 @@ window.addEventListener('DOMContentLoaded', function() {
   renderMemberList();
   renderFamilyTable();
 
-  // Then sync from Supabase (updates UI when done)
-  loadMembersFromSupabase();
+  // Init auth first, then sync from Supabase
+  initAuth().then(() => loadMembersFromSupabase());
 });
 
 function initCharts() {
@@ -1005,7 +1056,9 @@ async function saveMember() {
   const dob       = document.getElementById('fmDOB').value || null;
 
   // Build Supabase row — matching real schema
+  const memUserId = await getUserId();
   const sbRow = {
+    user_id:       memUserId,
     name:          (firstName + ' ' + lastName).trim(),
     dob:           dob,
     sex:           document.getElementById('fmSex').value,
@@ -1165,7 +1218,9 @@ async function saveBP() {
   if (sys<60||sys>250||dia<40||dia>150) { notify('⚠️ Unrealistic values','var(--warn)'); return; }
   // Insert into vitals table (real schema)
   const recordedAt = date + 'T' + (time || '00:00') + ':00';
+  const bpUserId = await getUserId();
   const sbRow = {
+    user_id:      bpUserId,
     member_id:    activeId,
     recorded_at:  recordedAt,
     systolic_bp:  sys,
@@ -1237,7 +1292,9 @@ async function saveGlucose() {
   // Insert into vitals table (real schema)
   const gTime = document.getElementById('gTime').value || '00:00';
   const recordedAt = date + 'T' + gTime + ':00';
+  const gluUserId = await getUserId();
   const sbRow = {
+    user_id:      gluUserId,
     member_id:    activeId,
     recorded_at:  recordedAt,
     blood_sugar:  Math.round(val),
@@ -1351,7 +1408,9 @@ async function saveMeal(){
   const today=new Date().toISOString().slice(0,10);
   // Insert into meals table (real schema)
   const mealTimestamp = today + 'T' + new Date().toTimeString().slice(0,5) + ':00';
+  const mealUserId = await getUserId();
   const sbRow = {
+    user_id:     mealUserId,
     member_id:   activeId,
     meal_time:   mealTimestamp,
     meal_name:   name,
@@ -1433,7 +1492,9 @@ async function saveExercise(){
   if(!date||!dur){notify('⚠️ Fill date and duration','var(--warn)');return;}
   // Insert into fitness_logs (real schema)
   const loggedAt = date + 'T00:00:00';
+  const exUserId = await getUserId();
   const sbRow = {
+    user_id:          exUserId,
     member_id:        activeId,
     logged_at:        loggedAt,
     activity_type:    document.getElementById('exType').value,
@@ -1497,7 +1558,9 @@ async function saveDocProfile(){
   // Save to physician_settings (real schema)
   try {
     const existing = await sbSelectSingle('physician_settings', { member_id: activeId });
+    const physUserId = await getUserId();
     const sbRow = {
+      user_id:         physUserId,
       member_id:       activeId,
       physician_name:  docProfile.drName,
       physician_email: docProfile.drEmail,
@@ -1600,7 +1663,9 @@ async function logReport(ch){
     const now = new Date();
     const periodDays = schedule.freq==='monthly'?30:schedule.freq==='biweekly'?14:7;
     const periodStart = new Date(); periodStart.setDate(now.getDate()-periodDays);
+    const repUserId = await getUserId();
     await sbInsert('health_reports', {
+      user_id:      repUserId,
       member_id:    activeId,
       sent_to:      entry.to,
       channel:      ch,
