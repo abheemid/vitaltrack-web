@@ -608,11 +608,39 @@ function setSyncStatus(state, msg) {
 
 // Generic Supabase helpers
 async function sbSelect(table, filters={}) {
+  // Each table uses a different timestamp column for ordering
+  const orderCol = {
+    'vitals':              'recorded_at',
+    'fitness_logs':        'logged_at',
+    'meals':               'created_at',
+    'family_members':      'created_at',
+    'health_reports':      'sent_at',
+    'physician_settings':  'updated_at',
+    'insights':            'generated_at',
+  }[table] || 'created_at';
+
   let q = db.from(table).select('*');
   for (const [col, val] of Object.entries(filters)) q = q.eq(col, val);
-  const { data, error } = await q.order('created_at', { ascending: false });
+  const { data, error } = await q.order(orderCol, { ascending: false });
   if (error) { console.error('sbSelect', table, error); return []; }
   return data || [];
+}
+
+async function sbSelectSingle(table, filters={}) {
+  const orderCol = {
+    'vitals':              'recorded_at',
+    'fitness_logs':        'logged_at',
+    'meals':               'created_at',
+    'family_members':      'created_at',
+    'health_reports':      'sent_at',
+    'physician_settings':  'updated_at',
+  }[table] || 'created_at';
+
+  let q = db.from(table).select('*');
+  for (const [col, val] of Object.entries(filters)) q = q.eq(col, val);
+  const { data, error } = await q.order(orderCol, { ascending: false }).limit(1).maybeSingle();
+  if (error) { console.error('sbSelectSingle', table, error); return null; }
+  return data;
 }
 async function sbInsert(table, row) {
   const { data, error } = await db.from(table).insert(row).select().single();
@@ -775,14 +803,7 @@ async function loadFromSupabase(memberId) {
   }
 }
 
-// Single-row select helper
-async function sbSelectSingle(table, filters={}) {
-  let q = db.from(table).select('*');
-  for (const [col, val] of Object.entries(filters)) q = q.eq(col, val);
-  const { data, error } = await q.limit(1).single();
-  if (error) return null;
-  return data;
-}
+// sbSelectSingle defined above
 
 // ── Load all family members from Supabase (real schema) ──
 async function loadMembersFromSupabase() {
