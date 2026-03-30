@@ -511,6 +511,8 @@ tbody td{padding:10px 14px;font-size:11px}
 var SURL = 'https://ttxtihqqemcazwhtmowq.supabase.co';
 var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0eHRpaHFxZW1jYXp3aHRtb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzgwNzIsImV4cCI6MjA4OTg1NDA3Mn0.NIWuAfFmChYfim2tXW2wDpnkr_m5NuLBPyekSxHgYdU';
 var db = supabase.createClient(SURL, SKEY);
+// Default user_id - replace with real auth later
+var USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // ── SYNC STATUS ───────────────────────────────────────────────
 function ss(state, msg) {
@@ -722,7 +724,7 @@ function age(dob) {
 
 function renderSwitcher() {
   var el = document.getElementById('sw');
-  el.innerHTML = '<span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-right:3px">Viewing:</span>';
+  el.innerHTML = '<span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-right:3px">Viewing:<\/span>';
   members.forEach(function(m) {
     var wrap = document.createElement('div');
     wrap.className = 'swwrap';
@@ -746,7 +748,7 @@ function updBanner() {
   if (!el) return;
   var rl = {self:'Self',spouse:'Spouse',child:'Child',parent:'Parent',grandparent:'Grandparent',sibling:'Sibling',other:'Other'};
   var a = age(m.dob);
-  el.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:' + m.color + '22;color:' + m.color + ';border:2px solid ' + m.color + '50;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:13px;font-weight:800">' + initials(m) + '</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:' + m.color + '">' + (m.firstName+' '+m.lastName).trim() + '</div><div style="font-size:10px;color:var(--muted)">' + (rl[m.relation]||m.relation) + (a!==null?' - '+a+' yrs':'') + (m.conditions?' - '+m.conditions:'') + '</div></div><button class="btn bs" style="font-size:9px;padding:5px 9px" onclick="goTab(\'family\')">Switch</button>';
+  el.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:' + m.color + '22;color:' + m.color + ';border:2px solid ' + m.color + '50;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:13px;font-weight:800">' + initials(m) + '<\/div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:' + m.color + '">' + (m.firstName+' '+m.lastName).trim() + '<\/div><div style="font-size:10px;color:var(--muted)">' + (rl[m.relation]||m.relation) + (a!==null?' - '+a+' yrs':'') + (m.conditions?' - '+m.conditions:'') + '<\/div><\/div><button class="btn bs" style="font-size:9px;padding:5px 9px" onclick="goTab(\'family\')">Switch<\/button>';
 }
 
 // ── FAMILY MANAGEMENT ─────────────────────────────────────────
@@ -756,6 +758,7 @@ async function saveMember() {
   var ln = document.getElementById('fmLn').value.trim();
   var dob = document.getElementById('fmDOB').value||null;
   var sbRow = {
+    user_id:USER_ID,
     name:(fn+' '+ln).trim(), dob:dob, sex:document.getElementById('fmSex').value,
     relationship:document.getElementById('fmRel').value, avatar_color:document.getElementById('fmCol').value,
     conditions:document.getElementById('fmCond').value, medications:document.getElementById('fmMeds').value,
@@ -821,29 +824,29 @@ function cancelMember() {
 function renderMList() {
   var el = document.getElementById('mList');
   var rl = {self:'Self',spouse:'Spouse',child:'Child',parent:'Parent',grandparent:'Grandparent',sibling:'Sibling',other:'Other'};
-  if (!members.length) { el.innerHTML='<div class="es" style="padding:16px"><div class="et">No members yet.</div></div>'; return; }
+  if (!members.length) { el.innerHTML='<div class="es" style="padding:16px"><div class="et">No members yet.<\/div><\/div>'; return; }
   el.innerHTML = members.map(function(m) {
     var a = age(m.dob), isA = m.id===aId;
     return '<div class="mc2 ' + (isA?'act':'') + '" onclick="switchMember(\'' + m.id + '\')">' +
-      '<div class="mav" style="background:' + m.color + '22;color:' + m.color + ';border:2px solid ' + m.color + '40">' + initials(m) + '</div>' +
-      '<div class="mn">' + m.firstName + ' ' + m.lastName + (isA?'<span class="adot"></span>':'') + '</div>' +
-      '<div class="mm">' + (rl[m.relation]||m.relation) + (a!==null?' - '+a+' yrs':'') + '</div>' +
-      '<div style="display:flex;gap:4px"><button class="db" onclick="event.stopPropagation();editMember(\'' + m.id + '\')" title="Edit">Edit</button>' +
-      '<button class="db" onclick="event.stopPropagation();delMember(\'' + m.id + '\')" title="Delete">Del</button></div></div>';
+      '<div class="mav" style="background:' + m.color + '22;color:' + m.color + ';border:2px solid ' + m.color + '40">' + initials(m) + '<\/div>' +
+      '<div class="mn">' + m.firstName + ' ' + m.lastName + (isA?'<span class="adot"><\/span>':'') + '<\/div>' +
+      '<div class="mm">' + (rl[m.relation]||m.relation) + (a!==null?' - '+a+' yrs':'') + '<\/div>' +
+      '<div style="display:flex;gap:4px"><button class="db" onclick="event.stopPropagation();editMember(\'' + m.id + '\')" title="Edit">Edit<\/button>' +
+      '<button class="db" onclick="event.stopPropagation();delMember(\'' + m.id + '\')" title="Delete">Del<\/button><\/div><\/div>';
   }).join('');
   var qs = document.getElementById('qsCard');
   qs.style.display='block';
   document.getElementById('qsTitle').textContent = getM().firstName + ' Quick Stats';
   var lb=bpData[0], lg=gluData[0], le=exData.filter(function(e){return e.type!=='HR Log';})[0];
   document.getElementById('qsBody').innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">' +
-    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last BP</div><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:#ff6b6b">' + (lb?lb.sys+'/'+lb.dia:'--') + '</div><div style="font-size:9px;color:var(--muted)">' + (lb?lb.date:'no data') + '</div></div>' +
-    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last Glucose</div><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:#a78bfa">' + (lg?lg.value:'--') + '</div><div style="font-size:9px;color:var(--muted)">' + (lg?lg.date:'no data') + '</div></div>' +
-    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last Workout</div><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--accent)">' + (le?le.type:'--') + '</div><div style="font-size:9px;color:var(--muted)">' + (le?le.date:'no data') + '</div></div></div>';
+    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last BP<\/div><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:#ff6b6b">' + (lb?lb.sys+'/'+lb.dia:'--') + '<\/div><div style="font-size:9px;color:var(--muted)">' + (lb?lb.date:'no data') + '<\/div><\/div>' +
+    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last Glucose<\/div><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:#a78bfa">' + (lg?lg.value:'--') + '<\/div><div style="font-size:9px;color:var(--muted)">' + (lg?lg.date:'no data') + '<\/div><\/div>' +
+    '<div style="text-align:center;padding:9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Last Workout<\/div><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--accent)">' + (le?le.type:'--') + '<\/div><div style="font-size:9px;color:var(--muted)">' + (le?le.date:'no data') + '<\/div><\/div><\/div>';
 }
 
 function renderFamTable() {
   var el = document.getElementById('famTbl');
-  if (!members.length) { el.innerHTML='<div class="es"><div class="ei">Family</div><div class="et">Add family members to see overview.</div></div>'; return; }
+  if (!members.length) { el.innerHTML='<div class="es"><div class="ei">Family<\/div><div class="et">Add family members to see overview.<\/div><\/div>'; return; }
   var rl = {self:'Self',spouse:'Spouse',child:'Child',parent:'Parent',grandparent:'Grandparent',sibling:'Sibling',other:'Other'};
   var rows = members.map(function(m) {
     var mbp  = JSON.parse(localStorage.getItem(m.id+'_bp')  || '[]');
@@ -853,17 +856,17 @@ function renderFamTable() {
     var a=age(m.dob), bpSt=lb?bpStat(lb.sys,lb.dia):null, gSt=lg?gluStat(lg.value,lg.type):null;
     var isA = m.id===aId;
     return '<tr style="' + (isA?'background:rgba(0,229,180,.03)':'') + '">' +
-      '<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:50%;background:' + m.color + '22;color:' + m.color + ';display:inline-flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:10px;font-weight:800">' + initials(m) + '</div>' +
-      '<div><div style="font-weight:600;font-size:11px">' + m.firstName + ' ' + m.lastName + (isA?'<span class="adot"></span>':'') + '</div><div style="font-size:10px;color:var(--muted)">' + (rl[m.relation]||m.relation) + '</div></div></div></td>' +
-      '<td style="color:var(--muted);font-size:10px">' + (a!==null?a+' yrs':'--') + ' - ' + m.sex + '</td>' +
-      '<td>' + (lb?'<span style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b;font-size:12px">'+lb.sys+'/'+lb.dia+'</span> <span style="font-size:9px;color:var(--muted)">'+lb.date+'</span>':'--') + '</td>' +
-      '<td>' + (bpSt?'<span class="badge '+bpSt.cls+'">'+bpSt.label+'</span>':'--') + '</td>' +
-      '<td>' + (lg?'<span style="font-family:Syne,sans-serif;font-weight:700;color:#a78bfa;font-size:12px">'+lg.value+'</span> <span style="font-size:9px;color:var(--muted)">mg/dL</span>':'--') + '</td>' +
-      '<td>' + (gSt?'<span class="badge '+gSt.cls+'">'+gSt.label+'</span>':'--') + '</td>' +
-      '<td style="color:var(--muted);font-size:10px">' + mex.length + ' sessions</td>' +
-      '<td><div style="display:flex;gap:5px"><button class="btn bs" style="padding:4px 8px;font-size:9px" onclick="switchMember(\''+m.id+'\')">View</button><button class="btn bw" style="padding:4px 8px;font-size:9px" onclick="sendMRep(\''+m.id+'\')">Report</button></div></td></tr>';
+      '<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:50%;background:' + m.color + '22;color:' + m.color + ';display:inline-flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:10px;font-weight:800">' + initials(m) + '<\/div>' +
+      '<div><div style="font-weight:600;font-size:11px">' + m.firstName + ' ' + m.lastName + (isA?'<span class="adot"><\/span>':'') + '<\/div><div style="font-size:10px;color:var(--muted)">' + (rl[m.relation]||m.relation) + '<\/div><\/div><\/div><\/td>' +
+      '<td style="color:var(--muted);font-size:10px">' + (a!==null?a+' yrs':'--') + ' - ' + m.sex + '<\/td>' +
+      '<td>' + (lb?'<span style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b;font-size:12px">'+lb.sys+'/'+lb.dia+'<\/span> <span style="font-size:9px;color:var(--muted)">'+lb.date+'<\/span>':'--') + '<\/td>' +
+      '<td>' + (bpSt?'<span class="badge '+bpSt.cls+'">'+bpSt.label+'<\/span>':'--') + '<\/td>' +
+      '<td>' + (lg?'<span style="font-family:Syne,sans-serif;font-weight:700;color:#a78bfa;font-size:12px">'+lg.value+'<\/span> <span style="font-size:9px;color:var(--muted)">mg/dL<\/span>':'--') + '<\/td>' +
+      '<td>' + (gSt?'<span class="badge '+gSt.cls+'">'+gSt.label+'<\/span>':'--') + '<\/td>' +
+      '<td style="color:var(--muted);font-size:10px">' + mex.length + ' sessions<\/td>' +
+      '<td><div style="display:flex;gap:5px"><button class="btn bs" style="padding:4px 8px;font-size:9px" onclick="switchMember(\''+m.id+'\')">View<\/button><button class="btn bw" style="padding:4px 8px;font-size:9px" onclick="sendMRep(\''+m.id+'\')">Report<\/button><\/div><\/td><\/tr>';
   }).join('');
-  el.innerHTML = '<table><thead><tr><th>Member</th><th>Age/Sex</th><th>Last BP</th><th>BP Status</th><th>Last Glucose</th><th>Glu Status</th><th>Exercise</th><th>Actions</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  el.innerHTML = '<table><thead><tr><th>Member<\/th><th>Age/Sex<\/th><th>Last BP<\/th><th>BP Status<\/th><th>Last Glucose<\/th><th>Glu Status<\/th><th>Exercise<\/th><th>Actions<\/th><\/tr><\/thead><tbody>' + rows + '<\/tbody><\/table>';
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────
@@ -895,7 +898,7 @@ async function saveBP() {
   if (!sys||!dia||!date) { notify('Fill date, systolic and diastolic','var(--warn)'); return; }
   if (sys<60||sys>250||dia<40||dia>150) { notify('Unrealistic values','var(--warn)'); return; }
   var recAt = date + 'T' + (time||'00:00') + ':00';
-  var row = {member_id:aId, recorded_at:recAt, systolic_bp:sys, diastolic_bp:dia,
+  var row = {user_id:USER_ID, member_id:aId, recorded_at:recAt, systolic_bp:sys, diastolic_bp:dia,
     pulse:parseInt(document.getElementById('bpP').value)||null,
     heart_rate:parseInt(document.getElementById('bpP').value)||null,
     arm:document.getElementById('bpA').value, notes:document.getElementById('bpN').value};
@@ -941,9 +944,9 @@ function renderBP() {
   var to=document.getElementById('fBT').value;
   var f=bpData.filter(function(e){return (!arm||e.arm===arm)&&(!from||e.date>=from)&&(!to||e.date<=to);});
   var tb=document.getElementById('bpTB');
-  if (!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">BP</div><div class="et">No readings found.</div></div></td></tr>';return;}
+  if (!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">BP<\/div><div class="et">No readings found.<\/div><\/div><\/td><\/tr>';return;}
   tb.innerHTML=f.map(function(e){var s=bpStat(e.sys,e.dia);
-    return '<tr><td>'+e.date+' '+e.time+'</td><td style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b">'+e.sys+'</td><td style="font-family:Syne,sans-serif;font-weight:700;color:#4d9fff">'+e.dia+'</td><td>'+(e.pulse||'--')+'</td><td><span class="tag">'+e.arm+'</span></td><td><span class="badge '+s.cls+'">'+s.label+'</span></td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'</td><td><button class="db" onclick="delBP(\''+e.id+'\')">Del</button></td></tr>';
+    return '<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b">'+e.sys+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#4d9fff">'+e.dia+'<\/td><td>'+(e.pulse||'--')+'<\/td><td><span class="tag">'+e.arm+'<\/span><\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delBP(\''+e.id+'\')">Del<\/button><\/td><\/tr>';
   }).join('');
 }
 
@@ -972,7 +975,7 @@ async function saveGlu() {
   var time=document.getElementById('gTime').value;
   if (!val||!date){notify('Enter value and date','var(--warn)');return;}
   var recAt = date + 'T' + (time||'00:00') + ':00';
-  var row = {member_id:aId, recorded_at:recAt, blood_sugar:Math.round(val),
+  var row = {user_id:USER_ID, member_id:aId, recorded_at:recAt, blood_sugar:Math.round(val),
     reading_type:document.getElementById('gTyp').value,
     a1c:parseFloat(document.getElementById('gA1C').value)||null,
     meds_taken:document.getElementById('gMeds').value,
@@ -1019,9 +1022,9 @@ function renderGlu() {
   var tl={fasting:'Fasting',before_meal:'Pre-Meal',after_meal:'Post-Meal',bedtime:'Bedtime',random:'Random'};
   var f=gluData.filter(function(e){return(!tf||e.type===tf)&&(!from||e.date>=from)&&(!to||e.date<=to);});
   var tb=document.getElementById('gluTB');
-  if(!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">Glucose</div><div class="et">No readings found.</div></div></td></tr>';return;}
+  if(!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">Glucose<\/div><div class="et">No readings found.<\/div><\/div><\/td><\/tr>';return;}
   var col=function(v){return v==='bn'?'#34d399':v==='be'?'var(--warn)':'var(--danger)';};
-  tb.innerHTML=f.map(function(e){var s=gluStat(e.value,e.type);return '<tr><td>'+e.date+' '+e.time+'</td><td style="font-family:Syne,sans-serif;font-weight:700;color:'+col(s.cls)+'">'+e.value+' <span style="font-size:9px;color:var(--muted)">mg/dL</span></td><td><span class="tag">'+(tl[e.type]||e.type)+'</span></td><td>'+(e.a1c?e.a1c+'%':'--')+'</td><td style="font-size:10px;color:var(--muted)">'+(e.meds||'--')+'</td><td><span class="badge '+s.cls+'">'+s.label+'</span></td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'</td><td><button class="db" onclick="delGlu(\''+e.id+'\')">Del</button></td></tr>';}).join('');
+  tb.innerHTML=f.map(function(e){var s=gluStat(e.value,e.type);return '<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:'+col(s.cls)+'">'+e.value+' <span style="font-size:9px;color:var(--muted)">mg/dL<\/span><\/td><td><span class="tag">'+(tl[e.type]||e.type)+'<\/span><\/td><td>'+(e.a1c?e.a1c+'%':'--')+'<\/td><td style="font-size:10px;color:var(--muted)">'+(e.meds||'--')+'<\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delGlu(\''+e.id+'\')">Del<\/button><\/td><\/tr>';}).join('');
 }
 
 function clearGluF(){['fGT','fGF','fGTo'].forEach(function(id){document.getElementById(id).value='';});renderGlu();}
@@ -1029,11 +1032,11 @@ function clearGluF(){['fGT','fGF','fGTo'].forEach(function(id){document.getEleme
 function renderA1C() {
   var entries=gluData.filter(function(e){return e.a1c;}).slice(0,8);
   var el=document.getElementById('a1cList');
-  if(!entries.length){el.innerHTML='<div class="es" style="padding:14px"><div class="et">No A1C values logged yet.</div></div>';return;}
+  if(!entries.length){el.innerHTML='<div class="es" style="padding:14px"><div class="et">No A1C values logged yet.<\/div><\/div>';return;}
   el.innerHTML=entries.map(function(e){
     var c=e.a1c<5.7?'var(--good)':e.a1c<6.5?'var(--warn)':'var(--danger)';
     var l=e.a1c<5.7?'Normal':e.a1c<6.5?'Prediabetes':'Diabetes range';
-    return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--surface2);border-radius:7px;border:1px solid var(--border);margin-bottom:5px"><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+c+'">'+e.a1c+'%</div><div><div style="font-size:11px">'+e.date+'</div><div style="font-size:10px;color:'+c+'">'+l+'</div></div></div>';
+    return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--surface2);border-radius:7px;border:1px solid var(--border);margin-bottom:5px"><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:'+c+'">'+e.a1c+'%<\/div><div><div style="font-size:11px">'+e.date+'<\/div><div style="font-size:10px;color:'+c+'">'+l+'<\/div><\/div><\/div>';
   }).join('');
 }
 
@@ -1069,7 +1072,7 @@ function procFood(file) {
   r.onload=function(e){
     var p=document.getElementById('fPrev'); p.src=e.target.result; p.style.display='block';
     document.getElementById('aRes').style.display='block';
-    document.getElementById('aiBox').innerHTML='<div class="abox" style="font-size:10px;color:var(--muted)">Analyzing with AI... or enter values manually below.</div>';
+    document.getElementById('aiBox').innerHTML='<div class="abox" style="font-size:10px;color:var(--muted)">Analyzing with AI... or enter values manually below.<\/div>';
     analyzeFood(e.target.result);
   };
   r.readAsDataURL(file);
@@ -1087,9 +1090,9 @@ async function analyzeFood(b64) {
     document.getElementById('mFat').value = p.fat||0;
     if (p.meal_name) document.getElementById('mName').value = p.meal_name;
     var hc = p.healthScore>=7?'var(--good)':p.healthScore>=5?'var(--warn)':'var(--danger)';
-    document.getElementById('aiBox').innerHTML = '<div class="abox"><strong>' + (p.meal_name||'Meal') + '</strong><br>' + (p.description||'') + '<br><br>' + (p.foods||[]).map(function(f){return '* '+f;}).join('<br>') + '<br><br><strong style="color:' + hc + '">Health Score: ' + (p.healthScore||'?') + '/10</strong></div>';
+    document.getElementById('aiBox').innerHTML = '<div class="abox"><strong>' + (p.meal_name||'Meal') + '<\/strong><br>' + (p.description||'') + '<br><br>' + (p.foods||[]).map(function(f){return '* '+f;}).join('<br>') + '<br><br><strong style="color:' + hc + '">Health Score: ' + (p.healthScore||'?') + '/10<\/strong><\/div>';
   } catch(e) {
-    document.getElementById('aiBox').innerHTML = '<div class="abox" style="color:var(--muted)">AI analysis unavailable - enter values manually above. (Deploy the analyze-food Edge Function to enable AI.)</div>';
+    document.getElementById('aiBox').innerHTML = '<div class="abox" style="color:var(--muted)">AI analysis unavailable - enter values manually above. (Deploy the analyze-food Edge Function to enable AI.)<\/div>';
   }
 }
 
@@ -1102,7 +1105,7 @@ async function saveMeal() {
   var type=document.getElementById('mTyp').value;
   var today=new Date().toISOString().slice(0,10);
   var mealTs = today+'T'+new Date().toTimeString().slice(0,5)+':00';
-  var row = {member_id:aId, meal_time:mealTs, meal_name:name, meal_type:type,
+  var row = {user_id:USER_ID, member_id:aId, meal_time:mealTs, meal_name:name, meal_type:type,
     calories:cal, protein_g:pro, carbs_g:carb, fat_g:fat};
   ss('busy','Saving meal...');
   var saved = await sbPost('meals', row);
@@ -1132,9 +1135,9 @@ function renderMeals() {
   var tm=mealData.filter(function(m){return m.date===today;});
   document.getElementById('todCal').textContent=tm.reduce(function(a,b){return a+b.calories;},0)+' kcal';
   var wrap=document.getElementById('mLog');
-  if(!mealData.length){wrap.innerHTML='<div class="es"><div class="ei">Meals</div><div class="et">No meals logged. Upload a food photo to get started.</div></div>';return;}
+  if(!mealData.length){wrap.innerHTML='<div class="es"><div class="ei">Meals<\/div><div class="et">No meals logged. Upload a food photo to get started.<\/div><\/div>';return;}
   wrap.innerHTML=mealData.slice(0,20).map(function(m){
-    return '<div class="fi"><div style="width:40px;height:40px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+(m.type==='Breakfast'?'AM':m.type==='Lunch'?'PM':m.type==='Dinner'?'Eve':'Snk')+'</div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+m.name+' <span class="tag">'+m.type+'</span></div><div style="font-size:10px;color:var(--muted)">'+m.date+' '+m.time+' - P:'+m.protein+'g C:'+m.carbs+'g F:'+m.fat+'g</div></div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--a3)">'+m.calories+'</div><button class="db" onclick="delMeal(\''+m.id+'\')">Del</button></div>';
+    return '<div class="fi"><div style="width:40px;height:40px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+(m.type==='Breakfast'?'AM':m.type==='Lunch'?'PM':m.type==='Dinner'?'Eve':'Snk')+'<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+m.name+' <span class="tag">'+m.type+'<\/span><\/div><div style="font-size:10px;color:var(--muted)">'+m.date+' '+m.time+' - P:'+m.protein+'g C:'+m.carbs+'g F:'+m.fat+'g<\/div><\/div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--a3)">'+m.calories+'<\/div><button class="db" onclick="delMeal(\''+m.id+'\')">Del<\/button><\/div>';
   }).join('');
   var todM=mealData.filter(function(m){return m.date===today;});
   macCh.data.datasets[0].data=[todM.reduce(function(a,b){return a+b.protein;},0)||1, todM.reduce(function(a,b){return a+b.carbs;},0)||1, todM.reduce(function(a,b){return a+b.fat;},0)||1];
@@ -1190,7 +1193,7 @@ function stopWatch() {
 async function saveEx() {
   var date=document.getElementById('exDate').value, dur=parseInt(document.getElementById('exDur').value);
   if(!date||!dur){notify('Fill date and duration','var(--warn)');return;}
-  var row={member_id:aId, logged_at:date+'T00:00:00', activity_type:document.getElementById('exTyp').value,
+  var row={user_id:USER_ID, member_id:aId, logged_at:date+'T00:00:00', activity_type:document.getElementById('exTyp').value,
     duration_minutes:dur, avg_bpm:parseInt(document.getElementById('exAvg').value)||null,
     max_bpm:parseInt(document.getElementById('exMax').value)||null,
     calories_burned:parseInt(document.getElementById('exCal').value)||0,
@@ -1215,9 +1218,9 @@ async function delEx(id) {
 function renderEx() {
   var wrap=document.getElementById('exLog');
   var s=exData.filter(function(e){return e.type!=='HR Log';});
-  if(!s.length){wrap.innerHTML='<div class="es"><div class="ei">Exercise</div><div class="et">No sessions logged yet.</div></div>';return;}
+  if(!s.length){wrap.innerHTML='<div class="es"><div class="ei">Exercise<\/div><div class="et">No sessions logged yet.<\/div><\/div>';return;}
   wrap.innerHTML=s.slice(0,20).map(function(e){var z=e.avgBPM?hrZone(e.avgBPM):null;
-    return '<div class="ae"><div style="font-size:16px;width:32px;text-align:center">Run</div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+e.type+'</div><div style="font-size:10px;color:var(--muted)">'+e.date+' - '+e.duration+'min'+(e.calories?' - '+e.calories+' kcal':'')+(e.notes?' - '+e.notes:'')+'</div>'+(z?'<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 6px;margin-top:2px;display:inline-block">'+z.label+'</span>':'')+'</div><div style="text-align:right">'+(e.avgBPM?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--a2)">'+e.avgBPM+'</div><div style="font-size:9px;color:var(--muted)">avg BPM</div>':'')+(e.maxBPM?'<div style="font-size:9px;color:var(--muted)">max: '+e.maxBPM+'</div>':'')+'</div><button class="db" onclick="delEx(\''+e.id+'\')">Del</button></div>';
+    return '<div class="ae"><div style="font-size:16px;width:32px;text-align:center">Run<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+e.type+'<\/div><div style="font-size:10px;color:var(--muted)">'+e.date+' - '+e.duration+'min'+(e.calories?' - '+e.calories+' kcal':'')+(e.notes?' - '+e.notes:'')+'<\/div>'+(z?'<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 6px;margin-top:2px;display:inline-block">'+z.label+'<\/span>':'')+'<\/div><div style="text-align:right">'+(e.avgBPM?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--a2)">'+e.avgBPM+'<\/div><div style="font-size:9px;color:var(--muted)">avg BPM<\/div>':'')+(e.maxBPM?'<div style="font-size:9px;color:var(--muted)">max: '+e.maxBPM+'<\/div>':'')+'<\/div><button class="db" onclick="delEx(\''+e.id+'\')">Del<\/button><\/div>';
   }).join('');
 }
 
@@ -1307,19 +1310,35 @@ function genPrev(){document.getElementById('rPrev').textContent=buildReport();}
 function sendNow(){genPrev();var ch=sched.channel||'email';if(ch==='email'||ch==='both')sendEmail();if(ch==='sms'||ch==='both')setTimeout(sendSMS,400);logRep('sent');}
 function sendEmail(){var m=getM();var to=encodeURIComponent(docP.drEmail||m.drEmail||'');var subj=encodeURIComponent('VitalTrack Report - '+(docP.patientName||(m.firstName+' '+m.lastName).trim())+' - '+new Date().toLocaleDateString());window.open('mailto:'+to+'?subject='+subj+'&body='+encodeURIComponent(buildReport()),'_blank');logRep('email');notify('Email opened');}
 function sendSMS(){var m=getM();var ph=(docP.drPhone||m.drPhone||'').replace(/\D/g,'');var rBP=bpData.slice(0,7),rGlu=gluData.slice(0,7);var aS=rBP.length?Math.round(rBP.reduce(function(a,b){return a+b.sys;},0)/rBP.length):null;var aG=rGlu.length?Math.round(rGlu.reduce(function(a,b){return a+b.value;},0)/rGlu.length):null;var sms='VitalTrack Report\nPatient: '+(docP.patientName||(m.firstName+' '+m.lastName).trim())+'\n'+new Date().toLocaleDateString()+'\n';if(aS)sms+='Avg BP: '+aS+'/'+(rBP.length?Math.round(rBP.reduce(function(a,b){return a+b.dia;},0)/rBP.length):0)+' mmHg\n';if(aG)sms+='Avg Glucose: '+aG+' mg/dL\n';sms+='See VitalTrack for full report.';window.open('sms:'+ph+'?body='+encodeURIComponent(sms),'_blank');logRep('sms');notify('SMS opened');}
-function printRep(){var win=window.open('','_blank');win.document.write('<html><head><title>VitalTrack Report</title><style>body{font-family:Courier New,monospace;padding:36px;max-width:680px;margin:0 auto;font-size:12px;line-height:1.7}pre{white-space:pre-wrap}@media print{button{display:none}}</style></head><body><pre>'+buildReport()+'</pre><br><button onclick="window.print()">Print</button></body></html>');win.document.close();logRep('print');notify('Print window opened');}
+function printRep(){
+  var win=window.open('','_blank');
+  var doc=win.document;
+  doc.open();
+  var txt=buildReport();
+  var parts=['<!DOCTYPE html><html><head><title>VitalTrack<\/title>',
+    '<style>body{font-family:monospace;padding:36px;max-width:680px;margin:0 auto;font-size:12px;line-height:1.7}',
+    'pre{white-space:pre-wrap}<\/style><\/head><body>',
+    '<pre>',txt,'<\/pre>',
+    '<br><button id="pb">Print<\/button>',
+    '<script>document.getElementById("pb").onclick=function(){window.print();}<\/script>',
+    '<\/body><\/html>'];
+  doc.write(parts.join(''));
+  doc.close();
+  logRep('print');
+  notify('Print window opened');
+}
 
 function logRep(ch) {
   var entry={id:Date.now(),date:new Date().toISOString().slice(0,10),time:new Date().toTimeString().slice(0,5),channel:ch,to:docP.drEmail||getM().drEmail||'--',period:sched.freq||'manual',bpCount:bpData.length,gluCount:gluData.length};
   rLog.unshift(entry); localStorage.setItem(mk('rl'),JSON.stringify(rLog)); renderRLog();
-  sbPost('health_reports',{member_id:aId,channel:ch,sent_to:entry.to,period_label:entry.period,period_start:new Date(Date.now()-7*86400000).toISOString().slice(0,10),period_end:new Date().toISOString().slice(0,10),bp_count:entry.bpCount,glucose_count:entry.gluCount,report_text:buildReport()}).catch(function(){});
+  sbPost('health_reports',{user_id:USER_ID,member_id:aId,channel:ch,sent_to:entry.to,period_label:entry.period,period_start:new Date(Date.now()-7*86400000).toISOString().slice(0,10),period_end:new Date().toISOString().slice(0,10),bp_count:entry.bpCount,glucose_count:entry.gluCount,report_text:buildReport()}).catch(function(){});
 }
 
 function renderRLog() {
   var wrap=document.getElementById('rLog');
-  if(!rLog.length){wrap.innerHTML='<div class="es"><div class="ei">Reports</div><div class="et">No reports sent yet.</div></div>';return;}
+  if(!rLog.length){wrap.innerHTML='<div class="es"><div class="ei">Reports<\/div><div class="et">No reports sent yet.<\/div><\/div>';return;}
   var ic={email:'Email',sms:'SMS',print:'Print',sent:'Sent',manual:'Manual'};
-  wrap.innerHTML='<table><thead><tr><th>Date</th><th>Channel</th><th>Sent To</th><th>Period</th><th>BP</th><th>Glucose</th></tr></thead><tbody>'+rLog.map(function(e){return '<tr><td>'+e.date+' '+e.time+'</td><td>'+(ic[e.channel]||e.channel)+'</td><td style="font-size:10px;color:var(--muted)">'+e.to+'</td><td><span class="tag">'+e.period+'</span></td><td>'+e.bpCount+'</td><td>'+e.gluCount+'</td></tr>';}).join('')+'</tbody></table>';
+  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>Channel<\/th><th>Sent To<\/th><th>Period<\/th><th>BP<\/th><th>Glucose<\/th><\/tr><\/thead><tbody>'+rLog.map(function(e){return '<tr><td>'+e.date+' '+e.time+'<\/td><td>'+(ic[e.channel]||e.channel)+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.to+'<\/td><td><span class="tag">'+e.period+'<\/span><\/td><td>'+e.bpCount+'<\/td><td>'+e.gluCount+'<\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
 }
 
 function sendMRep(memberId) {
@@ -1368,17 +1387,17 @@ function parseImpCSV(content,type,fn){
 function showImpPrev(type,rows,fn){
   if(!rows.length){notify('No valid records found','var(--warn)');return;}
   pendImp[type]={rows:rows,fn:fn};
-  if(type==='bp'){document.getElementById('impBPC').textContent='Found '+rows.length+' BP readings';document.getElementById('impBPT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'</td><td style="color:#ff6b6b;font-weight:700">'+r.sys+'</td><td style="color:#4d9fff;font-weight:700">'+r.dia+'</td></tr>';}).join('');document.getElementById('impBPP').style.display='block';}
-  else if(type==='hr'){document.getElementById('impHRC').textContent='Found '+rows.length+' HR readings';document.getElementById('impHRT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'</td><td>'+r.time+'</td><td style="color:#ff6b6b;font-weight:700">'+r.bpm+'</td></tr>';}).join('');document.getElementById('impHRP').style.display='block';}
-  else if(type==='ex'){document.getElementById('impExC').textContent='Found '+rows.length+' sessions';document.getElementById('impExT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'</td><td>'+r.type+'</td><td>'+r.duration+'min</td><td>'+(r.avgBPM||'--')+'</td></tr>';}).join('');document.getElementById('impExP').style.display='block';}
+  if(type==='bp'){document.getElementById('impBPC').textContent='Found '+rows.length+' BP readings';document.getElementById('impBPT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'<\/td><td style="color:#ff6b6b;font-weight:700">'+r.sys+'<\/td><td style="color:#4d9fff;font-weight:700">'+r.dia+'<\/td><\/tr>';}).join('');document.getElementById('impBPP').style.display='block';}
+  else if(type==='hr'){document.getElementById('impHRC').textContent='Found '+rows.length+' HR readings';document.getElementById('impHRT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'<\/td><td>'+r.time+'<\/td><td style="color:#ff6b6b;font-weight:700">'+r.bpm+'<\/td><\/tr>';}).join('');document.getElementById('impHRP').style.display='block';}
+  else if(type==='ex'){document.getElementById('impExC').textContent='Found '+rows.length+' sessions';document.getElementById('impExT').innerHTML=rows.slice(0,30).map(function(r){return'<tr><td>'+r.date+'<\/td><td>'+r.type+'<\/td><td>'+r.duration+'min<\/td><td>'+(r.avgBPM||'--')+'<\/td><\/tr>';}).join('');document.getElementById('impExP').style.display='block';}
 }
 
 async function confirmImp(type) {
   var p=pendImp[type]; if(!p) return;
   var rows=p.rows, fn=p.fn, added=0, dupes=0, now=Date.now();
-  if(type==='bp'){var keys=new Set(bpData.map(function(e){return e.date+'-'+e.sys+'-'+e.dia;}));rows.forEach(function(r,i){var k=r.date+'-'+r.sys+'-'+r.dia;if(keys.has(k)){dupes++;return;}bpData.push({id:now+i,date:r.date,time:r.time||'',sys:r.sys,dia:r.dia,pulse:r.pulse,arm:'left',notes:'Samsung import',source:'samsung'});keys.add(k);added++;sbPost('vitals',{member_id:aId,recorded_at:r.date+'T'+(r.time||'00:00')+':00',systolic_bp:r.sys,diastolic_bp:r.dia,pulse:r.pulse,arm:'left',source:'samsung'}).catch(function(){});});bpData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('bp'),JSON.stringify(bpData));renderBPStats();renderBP();updBPCh();}
-  else if(type==='hr'){rows.forEach(function(r,i){exData.push({id:now+i,date:r.date,type:'HR Log',duration:0,avgBPM:r.bpm,maxBPM:r.bpm,calories:0,notes:'Samsung HR import'});added++;sbPost('fitness_logs',{member_id:aId,logged_at:r.date+'T'+(r.time||'00:00')+':00',activity_type:'HR Log',avg_bpm:r.bpm,max_bpm:r.bpm}).catch(function(){});});exData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('ex'),JSON.stringify(exData));renderEx();}
-  else if(type==='ex'){var keys=new Set(exData.map(function(e){return e.date+'-'+e.type+'-'+e.duration;}));rows.forEach(function(r,i){var k=r.date+'-'+r.type+'-'+r.duration;if(keys.has(k)){dupes++;return;}exData.push({id:now+i,date:r.date,type:r.type,duration:r.duration,avgBPM:r.avgBPM,maxBPM:null,calories:r.calories,notes:'Samsung import'});keys.add(k);added++;sbPost('fitness_logs',{member_id:aId,logged_at:r.date+'T00:00:00',activity_type:r.type,duration_minutes:r.duration,avg_bpm:r.avgBPM,calories_burned:r.calories}).catch(function(){});});exData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('ex'),JSON.stringify(exData));renderEx();}
+  if(type==='bp'){var keys=new Set(bpData.map(function(e){return e.date+'-'+e.sys+'-'+e.dia;}));rows.forEach(function(r,i){var k=r.date+'-'+r.sys+'-'+r.dia;if(keys.has(k)){dupes++;return;}bpData.push({id:now+i,date:r.date,time:r.time||'',sys:r.sys,dia:r.dia,pulse:r.pulse,arm:'left',notes:'Samsung import',source:'samsung'});keys.add(k);added++;sbPost('vitals',{user_id:USER_ID,member_id:aId,recorded_at:r.date+'T'+(r.time||'00:00')+':00',systolic_bp:r.sys,diastolic_bp:r.dia,pulse:r.pulse,arm:'left',source:'samsung'}).catch(function(){});});bpData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('bp'),JSON.stringify(bpData));renderBPStats();renderBP();updBPCh();}
+  else if(type==='hr'){rows.forEach(function(r,i){exData.push({id:now+i,date:r.date,type:'HR Log',duration:0,avgBPM:r.bpm,maxBPM:r.bpm,calories:0,notes:'Samsung HR import'});added++;sbPost('fitness_logs',{user_id:USER_ID,member_id:aId,logged_at:r.date+'T'+(r.time||'00:00')+':00',activity_type:'HR Log',avg_bpm:r.bpm,max_bpm:r.bpm}).catch(function(){});});exData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('ex'),JSON.stringify(exData));renderEx();}
+  else if(type==='ex'){var keys=new Set(exData.map(function(e){return e.date+'-'+e.type+'-'+e.duration;}));rows.forEach(function(r,i){var k=r.date+'-'+r.type+'-'+r.duration;if(keys.has(k)){dupes++;return;}exData.push({id:now+i,date:r.date,type:r.type,duration:r.duration,avgBPM:r.avgBPM,maxBPM:null,calories:r.calories,notes:'Samsung import'});keys.add(k);added++;sbPost('fitness_logs',{user_id:USER_ID,member_id:aId,logged_at:r.date+'T00:00:00',activity_type:r.type,duration_minutes:r.duration,avg_bpm:r.avgBPM,calories_burned:r.calories}).catch(function(){});});exData.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem(mk('ex'),JSON.stringify(exData));renderEx();}
   var entry={id:now,date:new Date().toISOString().slice(0,10),time:new Date().toTimeString().slice(0,5),fn:fn,type:type,added:added,dupes:dupes,total:rows.length};
   iLog.unshift(entry); localStorage.setItem('vt_il',JSON.stringify(iLog)); renderILog();
   cancelImp(type); notify('Imported '+added+' records ('+dupes+' skipped)');
@@ -1388,8 +1407,8 @@ function cancelImp(type){pendImp[type]=null;document.getElementById('imp'+type.c
 
 function renderILog(){
   var wrap=document.getElementById('iLog');
-  if(!iLog.length){wrap.innerHTML='<div class="es"><div class="ei">Import</div><div class="et">No imports yet.</div></div>';return;}
-  wrap.innerHTML='<table><thead><tr><th>Date</th><th>File</th><th>Type</th><th>Added</th><th>Skipped</th></tr></thead><tbody>'+iLog.map(function(e){return'<tr><td>'+e.date+' '+e.time+'</td><td style="font-size:10px;color:var(--muted)">'+e.fn+'</td><td><span class="tag">'+e.type+'</span></td><td><span class="ch cn">+'+e.added+'</span></td><td><span class="ch cd">'+e.dupes+'</span></td></tr>';}).join('')+'</tbody></table>';
+  if(!iLog.length){wrap.innerHTML='<div class="es"><div class="ei">Import<\/div><div class="et">No imports yet.<\/div><\/div>';return;}
+  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>File<\/th><th>Type<\/th><th>Added<\/th><th>Skipped<\/th><\/tr><\/thead><tbody>'+iLog.map(function(e){return'<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.fn+'<\/td><td><span class="tag">'+e.type+'<\/span><\/td><td><span class="ch cn">+'+e.added+'<\/span><\/td><td><span class="ch cd">'+e.dupes+'<\/span><\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
 }
 
 // ── CHARTS ────────────────────────────────────────────────────
