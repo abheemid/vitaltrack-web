@@ -1403,7 +1403,12 @@ async function confirmImp(type) {
   cancelImp(type); notify('Imported '+added+' records ('+dupes+' skipped)');
 }
 
-function cancelImp(type){pendImp[type]=null;document.getElementById('imp'+type.charAt(0).toUpperCase()+type.slice(1)+'P').style.display='none';}
+function cancelImp(type){
+  pendImp[type]=null;
+  var idMap={bp:'impBPP',hr:'impHRP',ex:'impExP'};
+  var el=document.getElementById(idMap[type]);
+  if(el) el.style.display='none';
+}
 
 function renderILog(){
   var wrap=document.getElementById('iLog');
