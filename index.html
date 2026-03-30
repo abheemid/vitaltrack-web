@@ -6,7 +6,100 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+// ── HEART RATE HISTORY ────────────────────────────────────────
+function getHRData() {
+  // HR Log entries from Samsung import stored in exData
+  return exData.filter(function(e){ return e.type === 'HR Log'; });
+}
+
+function renderHRHistory() {
+  var typeF = document.getElementById('fHRType') ? document.getElementById('fHRType').value : '';
+  var from  = document.getElementById('fHRFrom') ? document.getElementById('fHRFrom').value : '';
+  var to    = document.getElementById('fHRTo')   ? document.getElementById('fHRTo').value   : '';
+  var wrap  = document.getElementById('hrHistLog');
+  if (!wrap) return;
+
+  var hrData = getHRData();
+  var filtered = hrData.filter(function(e) {
+    if (typeF && e.notes && !e.notes.toLowerCase().includes(typeF)) return false;
+    if (from && e.date < from) return false;
+    if (to   && e.date > to)   return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="es"><div class="ei">HR</div><div class="et">No heart rate data. Import Samsung heart rate file in the Samsung Import tab.</div></div>';
+    updHRHistCh([]);
+    return;
+  }
+
+  // Stats row
+  var allBPM  = filtered.map(function(e){ return e.avgBPM; }).filter(Boolean);
+  var avgBPM  = allBPM.length ? Math.round(allBPM.reduce(function(a,b){return a+b;},0)/allBPM.length) : '--';
+  var maxBPM  = allBPM.length ? Math.max.apply(null, allBPM) : '--';
+  var minBPM  = allBPM.length ? Math.min.apply(null, allBPM) : '--';
+  var exCount = filtered.filter(function(e){ return e.avgBPM >= 100; }).length;
+  var rstCount= filtered.filter(function(e){ return e.avgBPM < 80;  }).length;
+
+  var statsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)">' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Avg BPM</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:#ff6b6b">'+avgBPM+'</div></div>' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Max BPM</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--danger)">'+maxBPM+'</div></div>' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Min BPM</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--good)">'+minBPM+'</div></div>' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Exercise</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--warn)">'+exCount+'</div></div>' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Resting</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--accent)">'+rstCount+'</div></div>' +
+    '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Total</div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--text)">'+filtered.length+'</div></div>' +
+    '</div>';
+
+  // Table rows
+  var rows = filtered.slice(0, 100).map(function(e) {
+    var bpm  = e.avgBPM || '--';
+    var z    = e.avgBPM ? hrZone(e.avgBPM) : null;
+    var col  = e.avgBPM >= 130 ? '#ff6b6b' : e.avgBPM >= 100 ? 'var(--warn)' : e.avgBPM < 70 ? 'var(--accent)' : 'var(--text)';
+    var status = e.avgBPM >= 130 ? 'Exercise' : e.avgBPM >= 100 ? 'Active' : e.avgBPM < 70 ? 'Resting' : 'Normal';
+    var stCls  = e.avgBPM >= 130 ? 'bh' : e.avgBPM >= 100 ? 'be' : 'bn';
+    return '<tr>' +
+      '<td>'+e.date+' '+e.time+'</td>' +
+      '<td style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:'+col+'">'+bpm+' <span style="font-size:9px;color:var(--muted)">BPM</span></td>' +
+      '<td><span class="badge '+stCls+'">'+status+'</span></td>' +
+      '<td>'+(z ? '<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 7px">'+z.label+'</span>' : '--')+'</td>' +
+      '<td style="font-size:10px;color:var(--muted)">'+e.notes+'</td>' +
+      '</tr>';
+  }).join('');
+
+  wrap.innerHTML = statsHtml +
+    '<table><thead><tr><th>Date/Time</th><th>Heart Rate</th><th>Status</th><th>Zone</th><th>Source</th></tr></thead><tbody>' +
+    rows +
+    (filtered.length > 100 ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:10px">...and '+(filtered.length-100)+' more readings</td></tr>' : '') +
+    '</tbody></table>';
+
+  updHRHistCh(filtered);
+}
+
+function updHRHistCh(data) {
+  if (!hrHistCh) return;
+  var sorted = [].concat(data).sort(function(a,b){ return a.date.localeCompare(b.date); }).slice(-60);
+  var colors = sorted.map(function(e) {
+    if (!e.avgBPM) return '#6b7280';
+    if (e.avgBPM >= 130) return '#ff6b6b';
+    if (e.avgBPM >= 100) return '#ffbe0b';
+    return '#00e5b4';
+  });
+  hrHistCh.data.labels = sorted.map(function(e){ return e.date.slice(5)+' '+e.time; });
+  hrHistCh.data.datasets[0].data = sorted.map(function(e){ return e.avgBPM; });
+  hrHistCh.data.datasets[0].pointBackgroundColor = colors;
+  hrHistCh.data.datasets[0].borderColor = '#ff6b6b';
+  hrHistCh.update();
+}
+
+function clearHRFilters() {
+  ['fHRType','fHRFrom','fHRTo'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  renderHRHistory();
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
@@ -349,6 +442,35 @@ tbody td{padding:10px 14px;font-size:11px}
   </div>
   <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Exercise History</div>
   <div class="tw" id="exLog"></div>
+
+  <!-- HR HISTORY -->
+  <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;margin-top:8px">Heart Rate History (Samsung Import)</div>
+  <div class="cbox" style="margin-bottom:16px">
+    <div class="ctit">
+      <span>Heart Rate Trend</span>
+      <div style="display:flex;gap:12px;font-size:10px">
+        <span style="color:#ff6b6b">Exercise</span>
+        <span style="color:#00e5b4">Resting</span>
+        <span style="color:#ffbe0b">Normal</span>
+      </div>
+    </div>
+    <div class="cw" style="height:200px"><canvas id="hrHistC"></canvas></div>
+  </div>
+  <div class="fr" style="margin-bottom:12px">
+    <div class="f"><label>Filter</label>
+      <select id="fHRType" onchange="renderHRHistory()">
+        <option value="">All</option>
+        <option value="exercise">Exercise</option>
+        <option value="resting">Resting</option>
+        <option value="normal">Normal</option>
+        <option value="recovery">Recovery</option>
+      </select>
+    </div>
+    <div class="f"><label>From</label><input type="date" id="fHRFrom" onchange="renderHRHistory()"></div>
+    <div class="f"><label>To</label><input type="date" id="fHRTo" onchange="renderHRHistory()"></div>
+    <button class="btn bs" onclick="clearHRFilters()">Clear</button>
+  </div>
+  <div class="tw" id="hrHistLog"></div>
 </div>
 
 <!-- OVERVIEW PANEL -->
@@ -561,7 +683,7 @@ async function sbOne(table, filters) {
 var members = JSON.parse(localStorage.getItem('vt_fam') || '[]');
 var aId = localStorage.getItem('vt_aid') || null;
 var bpData=[], gluData=[], exData=[], mealData=[], rLog=[], iLog=[], docP={}, sched={};
-var bpCh, macCh, hrCh, ovBPCh, ovCalCh, ovHRCh, gluCh;
+var bpCh, macCh, hrCh, ovBPCh, ovCalCh, ovHRCh, gluCh, hrHistCh;
 var wTimer=null, hrHist=[];
 var pendImp={bp:null,hr:null,ex:null};
 
@@ -615,6 +737,7 @@ function goTab(tab) {
   if (p) p.classList.add('active');
   if (b) b.classList.add('active');
   if (tab === 'overview') updateOV();
+  if (tab === 'exercise') renderHRHistory();
   if (tab === 'diabetes') { updGluCh(); updTIR(); }
   if (tab === 'family')   { renderMList(); renderFamTable(); }
   if (tab === 'doctor')   { genPrev(); updNextRep(); }
@@ -875,6 +998,7 @@ function renderAll() {
   renderGluStats(); renderGlu(); updGluCh(); renderA1C(); updTIR();
   renderMeals(); updMacroProg();
   renderEx();
+  renderHRHistory();
   renderRLog(); renderILog();
   updBanner();
   fillDoc(); updNextRep();
@@ -1432,6 +1556,7 @@ function initCharts() {
   ovBPCh = new Chart(document.getElementById('ovBP').getContext('2d'),{type:'bar',data:{labels:[],datasets:[{label:'Systolic',data:[],backgroundColor:'rgba(255,107,107,.6)',borderRadius:3},{label:'Diastolic',data:[],backgroundColor:'rgba(77,159,255,.6)',borderRadius:3}]},options:def});
   ovCalCh = new Chart(document.getElementById('ovCal').getContext('2d'),{type:'bar',data:{labels:[],datasets:[{label:'Calories',data:[],backgroundColor:'rgba(255,190,11,.6)',borderRadius:3}]},options:def});
   ovHRCh = new Chart(document.getElementById('ovHR').getContext('2d'),{type:'line',data:{labels:[],datasets:[{label:'Avg BPM',data:[],borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.1)',tension:.4,fill:true},{label:'Max BPM',data:[],borderColor:'#ffbe0b',backgroundColor:'transparent',tension:.4,borderDash:[4,4]}]},options:def});
+  hrHistCh = new Chart(document.getElementById('hrHistC').getContext('2d'),{type:'line',data:{labels:[],datasets:[{label:'Heart Rate',data:[],borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.08)',tension:.4,fill:true,pointRadius:2,pointBackgroundColor:[]}]},options:def});
 }
 </script>
 </body>
