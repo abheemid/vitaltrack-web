@@ -1403,15 +1403,8 @@ async function analyzeFood(b64){
     if (parsed.meal_name) document.getElementById('mealName').value = parsed.meal_name;
     const hc = parsed.healthScore>=7?'var(--good)':parsed.healthScore>=5?'var(--warn)':'var(--danger)';
     document.getElementById('aiText').className='analysis-box';
-    document.getElementById('aiText').innerHTML=`<strong>🍽️ ${parsed.meal_name||'Meal'}</strong>
-
-${parsed.description||''}
-
-<strong>Foods:</strong>
-${(parsed.foods||[]).map(f=>'• '+f).join('
-')}
-
-<strong style="color:${hc}">Health Score: ${parsed.healthScore}/10</strong>`;
+    var foodList=(parsed.foods||[]).map(function(f){return'* '+f;}).join('<br>');
+    document.getElementById('aiText').innerHTML='<strong>Meal: '+(parsed.meal_name||'Unknown')+'</strong><br><br>'+(parsed.description||'')+'<br><br><strong>Foods:</strong><br>'+foodList+'<br><br><strong style="color:'+hc+'">Health Score: '+(parsed.healthScore||'?')+'/10</strong>';
   } catch(err) {
     console.warn('AI analysis failed:', err.message);
     document.getElementById('mCal').textContent='0';
