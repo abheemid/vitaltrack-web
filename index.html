@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -596,25 +599,28 @@ const db = createClient(SUPA_URL, SUPA_KEY);
 // Replace this with auth.uid() if you add login later.
 const WEB_USER_ID = 'web-app-00000000-0000-0000-0000-000000000001';
 
-// Sign in anonymously so auth.uid() works with RLS policies
+// Auth init — tries existing session, falls back to fixed web user ID
+// Anonymous sign-in requires enabling in Supabase Dashboard → Auth → Providers
 async function initAuth() {
   try {
     const { data: { session } } = await db.auth.getSession();
-    if (!session) {
-      // Try anonymous sign in
-      const { data, error } = await db.auth.signInAnonymously();
-      if (error) {
-        console.warn('Anonymous auth failed, using fixed user_id:', error.message);
-      } else {
-        console.log('Signed in anonymously:', data.user?.id);
-      }
+    if (session) {
+      console.log('Existing session found:', session.user.id);
+      return;
+    }
+    // Try anonymous sign-in (enable in Supabase Dashboard → Auth → Providers → Anonymous)
+    const { data, error } = await db.auth.signInAnonymously();
+    if (error) {
+      console.warn('Using fixed web user_id (enable Anonymous auth in Supabase to use real auth)');
+    } else {
+      console.log('Signed in anonymously:', data.user?.id);
     }
   } catch(e) {
-    console.warn('Auth init failed:', e.message);
+    console.warn('Auth init skipped:', e.message);
   }
 }
 
-// Get current user id (anonymous or fixed fallback)
+// Get current user id — returns real uid if authed, fixed fallback if not
 async function getUserId() {
   try {
     const { data: { user } } = await db.auth.getUser();
@@ -748,13 +754,14 @@ async function loadFromSupabase(memberId) {
   setSyncStatus('syncing', 'Syncing from cloud...');
   try {
     // vitals table holds BOTH bp and glucose
-    const [vitals, fitness, meal, rlog, physSettings] = await Promise.all([
+    const [vitals, fitness, meal, rlog] = await Promise.all([
       sbSelect('vitals',             { member_id: memberId }),
       sbSelect('fitness_logs',       { member_id: memberId }),
       sbSelect('meals',              { member_id: memberId }),
       sbSelect('health_reports',     { member_id: memberId }),
-      sbSelectSingle('physician_settings', { member_id: memberId }),
     ]);
+    // physician_settings loaded only when doctor tab is opened
+  const physSettings = null;
 
     // Split vitals into BP readings (has systolic_bp) and glucose (has blood_sugar)
     bpData = vitals
@@ -974,7 +981,7 @@ function goTab(tab) {
   if (btn) btn.classList.add('active');
   if (tab === 'overview') updateOverview();
   if (tab === 'diabetes') { updateGluChart(); updateTIR(); }
-  if (tab === 'doctor') { genPreview(); fillDocForm(); updateNextReport(); }
+  if (tab === 'doctor') { genPreview(); fillDocForm(); updateNextReport(); loadPhysicianSettings(); }
   if (tab === 'family') { renderMemberList(); renderFamilyTable(); }
 }
 
@@ -1229,7 +1236,6 @@ async function saveBP() {
     heart_rate:   parseInt(document.getElementById('bpPulse').value)||null,
     arm:          document.getElementById('bpArm').value,
     notes:        document.getElementById('bpNotes').value,
-    source:       'manual'
   };
   setSyncStatus('syncing','Saving BP reading...');
   let saved = null;
@@ -1302,7 +1308,6 @@ async function saveGlucose() {
     a1c:          parseFloat(document.getElementById('gA1C').value)||null,
     meds_taken:   document.getElementById('gMeds').value,
     notes:        document.getElementById('gNotes').value,
-    source:       'manual'
   };
   setSyncStatus('syncing','Saving glucose reading...');
   let saved = null;
@@ -1382,25 +1387,46 @@ async function analyzeFood(b64){
   document.getElementById('aiText').className='analysis-box loading';
   document.getElementById('aiText').textContent='🔍 Analyzing your plate with AI...';
   ['mCal','mPro','mCarb','mFat'].forEach(id=>document.getElementById(id).textContent='...');
-  try{
-    const imgData=b64.split(',')[1], mt=b64.split(';')[0].split(':')[1];
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mt,data:imgData}},{type:'text',text:'Analyze this food plate. Respond ONLY with valid JSON, no markdown:\n{"calories":450,"protein":35,"carbs":40,"fat":18,"meal_name":"Grilled Chicken","description":"Description here.","foods":["item 1","item 2"],"healthScore":8}'}]}]})});
-    const data=await resp.json();
-    const text=data.content.map(i=>i.text||'').join('');
-    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
-    document.getElementById('mCal').textContent=parsed.calories||'?';
-    document.getElementById('mPro').textContent=parsed.protein||'?';
-    document.getElementById('mCarb').textContent=parsed.carbs||'?';
-    document.getElementById('mFat').textContent=parsed.fat||'?';
-    if(parsed.meal_name) document.getElementById('mealName').value=parsed.meal_name;
-    const hc=parsed.healthScore>=7?'var(--good)':parsed.healthScore>=5?'var(--warn)':'var(--danger)';
+  try {
+    const imgData = b64.split(',')[1];
+    const mt = b64.split(';')[0].split(':')[1];
+    // Call via Supabase Edge Function to avoid CORS restriction on Anthropic API
+    const { data: fnData, error: fnError } = await db.functions.invoke('analyze-food', {
+      body: { imageData: imgData, mediaType: mt }
+    });
+    if (fnError) throw new Error(fnError.message);
+    const parsed = fnData;
+    document.getElementById('mCal').textContent = parsed.calories || '0';
+    document.getElementById('mPro').textContent = parsed.protein || '0';
+    document.getElementById('mCarb').textContent = parsed.carbs || '0';
+    document.getElementById('mFat').textContent = parsed.fat || '0';
+    if (parsed.meal_name) document.getElementById('mealName').value = parsed.meal_name;
+    const hc = parsed.healthScore>=7?'var(--good)':parsed.healthScore>=5?'var(--warn)':'var(--danger)';
     document.getElementById('aiText').className='analysis-box';
-    document.getElementById('aiText').innerHTML=`<strong>🍽️ ${parsed.meal_name||'Meal'}</strong>\n\n${parsed.description||''}\n\n<strong>Foods:</strong>\n${(parsed.foods||[]).map(f=>'• '+f).join('\n')}\n\n<strong style="color:${hc}">Health Score: ${parsed.healthScore}/10</strong>`;
-  }catch(err){
-    document.getElementById('mCal').textContent='420';document.getElementById('mPro').textContent='28';document.getElementById('mCarb').textContent='45';document.getElementById('mFat').textContent='14';
-    document.getElementById('aiText').className='analysis-box';document.getElementById('aiText').textContent='📊 Estimated values shown. AI analysis requires internet connection. Values are estimates based on typical meal portions.';
+    document.getElementById('aiText').innerHTML=`<strong>🍽️ ${parsed.meal_name||'Meal'}</strong>
+
+${parsed.description||''}
+
+<strong>Foods:</strong>
+${(parsed.foods||[]).map(f=>'• '+f).join('
+')}
+
+<strong style="color:${hc}">Health Score: ${parsed.healthScore}/10</strong>`;
+  } catch(err) {
+    console.warn('AI analysis failed:', err.message);
+    document.getElementById('mCal').textContent='0';
+    document.getElementById('mPro').textContent='0';
+    document.getElementById('mCarb').textContent='0';
+    document.getElementById('mFat').textContent='0';
+    document.getElementById('aiText').className='analysis-box';
+    document.getElementById('aiText').innerHTML=`⚠️ <strong>AI analysis needs setup</strong>
+
+The food AI requires a Supabase Edge Function named <code>analyze-food</code>.
+
+See setup instructions below, or enter values manually.`;
   }
 }
+
 async function saveMeal(){
   const name=document.getElementById('mealName').value||'Meal', type=document.getElementById('mealType').value;
   const cal=parseInt(document.getElementById('mCal').textContent)||0, pro=parseInt(document.getElementById('mPro').textContent)||0;
@@ -1502,8 +1528,7 @@ async function saveExercise(){
     avg_bpm:          parseInt(document.getElementById('exAvgBPM').value)||null,
     max_bpm:          parseInt(document.getElementById('exMaxBPM').value)||null,
     calories_burned:  parseInt(document.getElementById('exCal').value)||0,
-    notes:            document.getElementById('exNotes').value,
-    source:           'manual'
+    notes:            document.getElementById('exNotes').value
   };
   setSyncStatus('syncing','Saving exercise session...');
   let saved = null;
@@ -1552,16 +1577,34 @@ function fillDocForm(){
   if(document.getElementById('drEmail'))document.getElementById('drEmail').value=merged.drEmail||'';
   if(document.getElementById('drPhone'))document.getElementById('drPhone').value=merged.drPhone||'';
 }
+// Load physician settings from Supabase when doctor tab opened
+async function loadPhysicianSettings() {
+  try {
+    const userId = await getUserId();
+    const row = await sbSelectSingle('physician_settings', { user_id: userId });
+    if (row) {
+      // Populate doctor form with saved settings
+      if (document.getElementById('drName')) document.getElementById('drName').value = row.physician_name || '';
+      if (document.getElementById('drEmail')) document.getElementById('drEmail').value = row.physician_email || '';
+      if (document.getElementById('drPhone')) document.getElementById('drPhone').value = row.dr_phone || '';
+      if (document.getElementById('drFreq')) document.getElementById('drFreq').value = row.report_frequency || 'weekly';
+      if (document.getElementById('drChannel')) document.getElementById('drChannel').value = row.report_channel || 'email';
+      updateNextReport();
+    }
+  } catch(e) {
+    console.warn('Could not load physician settings:', e.message);
+  }
+}
+
 async function saveDocProfile(){
   docProfile={patientName:document.getElementById('drPatientName').value,patientDOB:document.getElementById('drPatientDOB').value,drName:document.getElementById('drName').value,drEmail:document.getElementById('drEmail').value,drPhone:document.getElementById('drPhone').value,conditions:document.getElementById('drConditions').value,meds:document.getElementById('drMeds').value};
   localStorage.setItem(mk('doc'),JSON.stringify(docProfile));
   // Save to physician_settings (real schema)
   try {
-    const existing = await sbSelectSingle('physician_settings', { member_id: activeId });
+    const existing = await sbSelectSingle('physician_settings', { user_id: physUserId });
     const physUserId = await getUserId();
     const sbRow = {
       user_id:         physUserId,
-      member_id:       activeId,
       physician_name:  docProfile.drName,
       physician_email: docProfile.drEmail,
       dr_phone:        docProfile.drPhone,
@@ -1570,10 +1613,11 @@ async function saveDocProfile(){
       include_vitals:  true,
       include_fitness: true,
       include_nutrition:true,
+      last_sent_at:    null,
       updated_at:      new Date().toISOString()
     };
     if (existing) {
-      await db.from('physician_settings').update(sbRow).eq('member_id', activeId);
+      await db.from('physician_settings').update(sbRow).eq('user_id', physUserId);
     } else {
       await sbInsert('physician_settings', sbRow);
     }
