@@ -291,7 +291,7 @@ tbody td{padding:10px 14px;font-size:11px}
         <div id="aiBox" style="margin-bottom:12px"></div>
         <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
           <div class="f"><label>Meal Name</label><input type="text" id="mName" placeholder="e.g. Chicken salad"></div>
-          <div class="f"><label>Type</label><select id="mTyp"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+          <div class="f"><label>Type</label><select id="mTyp"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="other">Other</option></select></div>
         </div>
         <button class="btn bp" onclick="saveMeal()">+ Save Meal</button>
       </div>
@@ -1168,7 +1168,8 @@ function renderMeals() {
   var wrap=document.getElementById('mLog');
   if(!mealData.length){wrap.innerHTML='<div class="es"><div class="ei">Meals<\/div><div class="et">No meals logged. Upload a food photo to get started.<\/div><\/div>';return;}
   wrap.innerHTML=mealData.slice(0,20).map(function(m){
-    return '<div class="fi"><div style="width:40px;height:40px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+(m.type==='Breakfast'?'AM':m.type==='Lunch'?'PM':m.type==='Dinner'?'Eve':'Snk')+'<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+m.name+' <span class="tag">'+m.type+'<\/span><\/div><div style="font-size:10px;color:var(--muted)">'+m.date+' '+m.time+' - P:'+m.protein+'g C:'+m.carbs+'g F:'+m.fat+'g<\/div><\/div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--a3)">'+m.calories+'<\/div><button class="db" onclick="delMeal(\''+m.id+'\')">Del<\/button><\/div>';
+    var mt=(m.type||'').toLowerCase();
+    return '<div class="fi"><div style="width:40px;height:40px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+(mt==='breakfast'?'AM':mt==='lunch'?'PM':mt==='dinner'?'Eve':'Snk')+'<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+m.name+' <span class="tag">'+m.type+'<\/span><\/div><div style="font-size:10px;color:var(--muted)">'+m.date+' '+m.time+' - P:'+m.protein+'g C:'+m.carbs+'g F:'+m.fat+'g<\/div><\/div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--a3)">'+m.calories+'<\/div><button class="db" onclick="delMeal(\''+m.id+'\')">Del<\/button><\/div>';
   }).join('');
   var todM=mealData.filter(function(m){return m.date===today;});
   macCh.data.datasets[0].data=[todM.reduce(function(a,b){return a+b.protein;},0)||1, todM.reduce(function(a,b){return a+b.carbs;},0)||1, todM.reduce(function(a,b){return a+b.fat;},0)||1];
