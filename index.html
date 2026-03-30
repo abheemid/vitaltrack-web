@@ -1387,26 +1387,36 @@ function saveSchedule() {
 }
 
 function updNextRep() {
-  // Always read live from dropdowns, not saved sched
-  var freqEl = document.getElementById('drFreq');
-  var chEl   = document.getElementById('drCh');
-  var freq   = freqEl ? freqEl.value : (sched.freq||'weekly');
-  var ch     = chEl   ? chEl.value   : (sched.channel||'email');
+  var freq = (document.getElementById('drFreq')||{}).value || sched.freq || 'weekly';
+  var ch   = (document.getElementById('drCh')||{}).value   || sched.channel || 'email';
+  var now  = new Date();
+  var next = new Date(now);
 
-  var now=new Date(), next=new Date(now);
-  if(freq==='daily')     { next.setDate(now.getDate()+1); }
-  else if(freq==='weekly')   { var d=(1-now.getDay()+7)%7||7; next.setDate(now.getDate()+d); }
-  else if(freq==='biweekly') { next.setDate(now.getDate()+14); }
-  else                       { next=new Date(now.getFullYear(),now.getMonth()+1,1); }
+  if (freq === 'daily') {
+    next.setDate(now.getDate() + 1);
+  } else if (freq === 'weekly') {
+    next.setDate(now.getDate() + 7);
+  } else if (freq === 'biweekly') {
+    next.setDate(now.getDate() + 14);
+  } else if (freq === 'monthly') {
+    // First day of next month
+    next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
 
-  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dateStr = days[next.getDay()]+', '+months[next.getMonth()]+' '+next.getDate()+', '+next.getFullYear();
+
+  var freqLabels = {daily:'Daily',weekly:'Weekly',biweekly:'Bi-Weekly',monthly:'Monthly'};
+  var chLabels   = {email:'email',sms:'SMS',both:'email & SMS'};
+  var m = getM();
+  var toEmail = m.drEmail || docP.drEmail || '(email not set)';
+  var infoStr = (freqLabels[freq]||freq) + ' via ' + (chLabels[ch]||ch) + ' to ' + toEmail;
+
   var nRepEl = document.getElementById('nRep');
   var nRepI  = document.getElementById('nRepI');
-  if (nRepEl) nRepEl.textContent = days[next.getDay()]+', '+months[next.getMonth()]+' '+next.getDate()+', '+next.getFullYear();
-  var m=getM();
-  var toEmail = m.drEmail || docP.drEmail || '(email not set)';
-  if (nRepI) nRepI.textContent = freq+' via '+ch+' to '+toEmail;
+  if (nRepEl) nRepEl.textContent = dateStr;
+  if (nRepI)  nRepI.textContent  = infoStr;
 }
 
 function buildReport() {
