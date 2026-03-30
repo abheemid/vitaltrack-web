@@ -357,14 +357,46 @@ tbody td{padding:11px 16px;font-size:12px}
       <input type="file" id="foodFile" accept="image/*" style="display:none" onchange="handleFoodFile(event)">
       <img id="foodPreview" style="display:none;max-width:100%;max-height:260px;border-radius:10px;margin:12px auto;border:1px solid var(--border)" src="" alt="Food">
       <div id="analysisResult" style="display:none">
+        <!-- Macro display / edit grid -->
         <div class="macro-grid">
-          <div class="macro-card"><div class="macro-label">Calories</div><div class="macro-val" id="mCal" style="color:var(--accent3)">—</div><div class="macro-unit">kcal</div></div>
-          <div class="macro-card"><div class="macro-label">Protein</div><div class="macro-val" id="mPro" style="color:var(--accent)">—</div><div class="macro-unit">g</div></div>
-          <div class="macro-card"><div class="macro-label">Carbs</div><div class="macro-val" id="mCarb" style="color:var(--accent4)">—</div><div class="macro-unit">g</div></div>
-          <div class="macro-card"><div class="macro-label">Fat</div><div class="macro-val" id="mFat" style="color:var(--accent2)">—</div><div class="macro-unit">g</div></div>
+          <div class="macro-card">
+            <div class="macro-label">Calories</div>
+            <div class="macro-val" id="mCal" style="color:var(--accent3);display:none">—</div>
+            <input type="number" id="mCalInput" placeholder="0" min="0" max="5000"
+              style="background:transparent;border:none;border-bottom:1px solid var(--accent3);color:var(--accent3);font-family:'Syne',sans-serif;font-size:20px;font-weight:700;width:100%;text-align:center;outline:none;padding:4px 0"
+              oninput="document.getElementById('mCal').textContent=this.value">
+            <div class="macro-unit">kcal</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label">Protein</div>
+            <div class="macro-val" id="mPro" style="color:var(--accent);display:none">—</div>
+            <input type="number" id="mProInput" placeholder="0" min="0" max="500"
+              style="background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--accent);font-family:'Syne',sans-serif;font-size:20px;font-weight:700;width:100%;text-align:center;outline:none;padding:4px 0"
+              oninput="document.getElementById('mPro').textContent=this.value">
+            <div class="macro-unit">g</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label">Carbs</div>
+            <div class="macro-val" id="mCarb" style="color:var(--accent4);display:none">—</div>
+            <input type="number" id="mCarbInput" placeholder="0" min="0" max="500"
+              style="background:transparent;border:none;border-bottom:1px solid var(--accent4);color:var(--accent4);font-family:'Syne',sans-serif;font-size:20px;font-weight:700;width:100%;text-align:center;outline:none;padding:4px 0"
+              oninput="document.getElementById('mCarb').textContent=this.value">
+            <div class="macro-unit">g</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label">Fat</div>
+            <div class="macro-val" id="mFat" style="color:var(--accent2);display:none">—</div>
+            <input type="number" id="mFatInput" placeholder="0" min="0" max="300"
+              style="background:transparent;border:none;border-bottom:1px solid var(--accent2);color:var(--accent2);font-family:'Syne',sans-serif;font-size:20px;font-weight:700;width:100%;text-align:center;outline:none;padding:4px 0"
+              oninput="document.getElementById('mFat').textContent=this.value">
+            <div class="macro-unit">g</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:12px">
+          ✏️ Values are editable — tap any number to correct it
         </div>
         <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
-          <div class="field"><label>Meal Name</label><input type="text" id="mealName" placeholder="Grilled chicken..."></div>
+          <div class="field"><label>Meal Name</label><input type="text" id="mealName" placeholder="e.g. Grilled chicken salad"></div>
           <div class="field"><label>Type</label><select id="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
         </div>
         <button class="btn btn-primary" onclick="saveMeal()">+ Save Meal</button>
@@ -1377,6 +1409,8 @@ function processFood(file){
   const r=new FileReader();
   r.onload=e=>{
     const prev=document.getElementById('foodPreview');prev.src=e.target.result;prev.style.display='block';
+    // Show result panel immediately so user can enter values while AI loads
+    document.getElementById('analysisResult').style.display='block';
     analyzeFood(e.target.result);
   };
   r.readAsDataURL(file);
@@ -1396,10 +1430,18 @@ async function analyzeFood(b64){
     });
     if (fnError) throw new Error(fnError.message);
     const parsed = fnData;
-    document.getElementById('mCal').textContent = parsed.calories || '0';
-    document.getElementById('mPro').textContent = parsed.protein || '0';
-    document.getElementById('mCarb').textContent = parsed.carbs || '0';
-    document.getElementById('mFat').textContent = parsed.fat || '0';
+    var calVal = parsed.calories || 0;
+    var proVal = parsed.protein || 0;
+    var carbVal = parsed.carbs || 0;
+    var fatVal = parsed.fat || 0;
+    document.getElementById('mCal').textContent = calVal;
+    document.getElementById('mPro').textContent = proVal;
+    document.getElementById('mCarb').textContent = carbVal;
+    document.getElementById('mFat').textContent = fatVal;
+    document.getElementById('mCalInput').value = calVal;
+    document.getElementById('mProInput').value = proVal;
+    document.getElementById('mCarbInput').value = carbVal;
+    document.getElementById('mFatInput').value = fatVal;
     if (parsed.meal_name) document.getElementById('mealName').value = parsed.meal_name;
     const hc = parsed.healthScore>=7?'var(--good)':parsed.healthScore>=5?'var(--warn)':'var(--danger)';
     document.getElementById('aiText').className='analysis-box';
@@ -1422,8 +1464,10 @@ See setup instructions below, or enter values manually.`;
 
 async function saveMeal(){
   const name=document.getElementById('mealName').value||'Meal', type=document.getElementById('mealType').value;
-  const cal=parseInt(document.getElementById('mCal').textContent)||0, pro=parseInt(document.getElementById('mPro').textContent)||0;
-  const carb=parseInt(document.getElementById('mCarb').textContent)||0, fat=parseInt(document.getElementById('mFat').textContent)||0;
+  const cal=parseInt(document.getElementById('mCalInput').value)||parseInt(document.getElementById('mCal').textContent)||0;
+  const pro=parseInt(document.getElementById('mProInput').value)||parseInt(document.getElementById('mPro').textContent)||0;
+  const carb=parseInt(document.getElementById('mCarbInput').value)||parseInt(document.getElementById('mCarb').textContent)||0;
+  const fat=parseInt(document.getElementById('mFatInput').value)||parseInt(document.getElementById('mFat').textContent)||0;
   const today=new Date().toISOString().slice(0,10);
   // Insert into meals table (real schema)
   const mealTimestamp = today + 'T' + new Date().toTimeString().slice(0,5) + ':00';
