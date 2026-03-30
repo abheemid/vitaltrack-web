@@ -6,7 +6,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,180,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,180,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 20px 60px}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:10px}
+.logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent)}
+.live-badge{display:flex;align-items:center;gap:7px;background:rgba(0,229,180,.08);border:1px solid rgba(0,229,180,.2);padding:5px 12px;border-radius:20px;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.syncbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:18px;font-size:11px;flex-wrap:wrap}
+.syncdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.syncmsg{color:var(--muted);flex:1}
+.syncbtn{background:rgba(0,229,180,.1);border:1px solid rgba(0,229,180,.3);border-radius:6px;color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;cursor:pointer;margin-left:auto}
+.tabs{display:flex;gap:3px;margin-bottom:24px;background:var(--surface);padding:5px;border-radius:10px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.tab.active{background:var(--surface2);color:var(--text);border:1p
 // ── OVERVIEW MEMBER BANNER ────────────────────────────────────
 function updateOvBanner() {
   var el = document.getElementById('ovBanner');
@@ -41,27 +61,7 @@ function updateOvBanner() {
     '<button class="btn bs" style="font-size:9px;padding:5px 9px" onclick="goTab('family')">Switch Member</button>';
 }
 
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,180,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,180,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
-.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 20px 60px}
-header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:10px}
-.logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent)}
-.live-badge{display:flex;align-items:center;gap:7px;background:rgba(0,229,180,.08);border:1px solid rgba(0,229,180,.2);padding:5px 12px;border-radius:20px;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
-.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.syncbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:18px;font-size:11px;flex-wrap:wrap}
-.syncdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
-.syncmsg{color:var(--muted);flex:1}
-.syncbtn{background:rgba(0,229,180,.1);border:1px solid rgba(0,229,180,.3);border-radius:6px;color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;cursor:pointer;margin-left:auto}
-.tabs{display:flex;gap:3px;margin-bottom:24px;background:var(--surface);padding:5px;border-radius:10px;flex-wrap:wrap}
-.tab{padding:8px 14px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
-.tab.active{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+x solid var(--border)}
 .panel{display:none}.panel.active{display:block;animation:fadeIn .25s ease}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:18px}
 .ctitle{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:16px}
@@ -1724,6 +1724,34 @@ function clearHRFilters() {
 }
 
 
+
+
+// ── OVERVIEW MEMBER BANNER ────────────────────────────────────
+function updateOvBanner() {
+  var el = document.getElementById('ovBanner');
+  if (!el) return;
+  var m = getM();
+  var a = age(m.dob);
+  var rl = {self:'Self',spouse:'Spouse',child:'Child',parent:'Parent',grandparent:'Grandparent',sibling:'Sibling',other:'Other'};
+  var today = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var lastBP  = bpData[0];
+  var lastGlu = gluData[0];
+  var cutoff  = new Date(); cutoff.setDate(cutoff.getDate()-7);
+  var cutStr  = cutoff.toISOString().slice(0,10);
+  var wEx = exData.filter(function(e){return e.date>=cutStr && e.type!=='HR Log';}).length;
+  var bpStatus = lastBP ? bpStat(lastBP.sys,lastBP.dia) : null;
+  var bpColor  = bpStatus ? (bpStatus.cls==='bn'?'var(--good)':bpStatus.cls==='be'?'var(--warn)':'var(--danger)') : 'var(--muted)';
+  el.innerHTML =
+    '<div style="width:40px;height:40px;border-radius:50%;background:'+m.color+'22;color:'+m.color+';border:2px solid '+m.color+'50;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:15px;font-weight:800">'+initials(m)+'<\/div>' +
+    '<div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:'+m.color+'">'+(m.firstName+' '+m.lastName).trim()+' - 7-Day Overview<\/div>'+
+    '<div style="font-size:10px;color:var(--muted)">'+today+(a!==null?' - '+a+' yrs':'')+(m.conditions?' - '+m.conditions:'')+'<\/div><\/div>'+
+    '<div style="display:flex;gap:14px;font-size:10px;flex-wrap:wrap">'+
+    (lastBP?'<div style="text-align:center"><div style="color:var(--muted);margin-bottom:2px">Last BP<\/div><div style="font-family:Syne,sans-serif;font-weight:700;color:'+bpColor+'">'+lastBP.sys+'\/'+lastBP.dia+'<\/div><\/div>':'')+
+    (lastGlu?'<div style="text-align:center"><div style="color:var(--muted);margin-bottom:2px">Last Glucose<\/div><div style="font-family:Syne,sans-serif;font-weight:700;color:#a78bfa">'+lastGlu.value+' mg\/dL<\/div><\/div>':'')+
+    '<div style="text-align:center"><div style="color:var(--muted);margin-bottom:2px">Workouts<\/div><div style="font-family:Syne,sans-serif;font-weight:700;color:var(--accent)">'+wEx+' this week<\/div><\/div>'+
+    '<\/div>'+
+    '<button class="btn bs" style="font-size:9px;padding:5px 9px" onclick="goTab(&quot;family&quot;)">Switch<\/button>';
+}
 </script>
 </body>
 </html>
