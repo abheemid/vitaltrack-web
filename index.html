@@ -6,30 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
-// ── DATE / TIME FORMATTING HELPERS ───────────────────────────
-function fmtDate(dateStr) {
-  if (!dateStr) return '--';
-  var d = new Date(dateStr + 'T00:00:00');
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var today  = new Date().toISOString().slice(0,10);
-  var yest   = new Date(Date.now()-86400000).toISOString().slice(0,10);
-  if (dateStr === today) return 'Today';
-  if (dateStr === yest)  return 'Yesterday';
-  return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
-}
-
-function fmtTime(timeStr) {
-  if (!timeStr) return '';
-  var parts = timeStr.split(':');
-  var h = parseInt(parts[0]), m = parts[1];
-  var ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return h + ':' + m + ' ' + ampm;
-}
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
@@ -597,6 +574,7 @@ tbody td{padding:11px 14px;font-size:13px}
 
 </div>
 <script>
+
 // ── SUPABASE ──────────────────────────────────────────────────
 var SURL = 'https://ttxtihqqemcazwhtmowq.supabase.co';
 var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0eHRpaHFxZW1jYXp3aHRtb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzgwNzIsImV4cCI6MjA4OTg1NDA3Mn0.NIWuAfFmChYfim2tXW2wDpnkr_m5NuLBPyekSxHgYdU';
@@ -1572,8 +1550,10 @@ function printRep(){
     '<style>body{font-family:monospace;padding:36px;max-width:680px;margin:0 auto;font-size:12px;line-height:1.7}',
     'pre{white-space:pre-wrap}<\/style><\/head><body>',
     '<pre>',txt,'<\/pre>',
-    '<br><button id="pb">Print<\/button>',
-    '<script>document.getElementById("pb").onclick=function(){window.print();}<\/script>',
+    '<br><button id="pb">Print<\/button>\','+
+
+
+    '<script>document.getElementById("pb").onclick=function(){window.print();}<\/script>\','+
     '<\/body><\/html>'];
   doc.write(parts.join(''));
   doc.close();
@@ -1808,6 +1788,29 @@ function updateOvBanner() {
     '<div style="text-align:center"><div style="color:var(--muted);margin-bottom:2px">Workouts<\/div><div style="font-family:Syne,sans-serif;font-weight:700;color:var(--accent)">'+wEx+' this week<\/div><\/div>'+
     '<\/div>'+
     '<button class="btn bs" style="font-size:9px;padding:5px 9px" onclick="goTab(&quot;family&quot;)">Switch<\/button>';
+}
+
+
+// ── DATE / TIME FORMATTING HELPERS ───────────────────────────
+function fmtDate(dateStr) {
+  if (!dateStr) return '--';
+  var d = new Date(dateStr + 'T00:00:00');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var today  = new Date().toISOString().slice(0,10);
+  var yest   = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if (dateStr === today) return 'Today';
+  if (dateStr === yest)  return 'Yesterday';
+  return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+function fmtTime(timeStr) {
+  if (!timeStr) return '';
+  var parts = timeStr.split(':');
+  var h = parseInt(parts[0]), m = parts[1];
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
 }
 </script>
 </body>
