@@ -6,7 +6,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+function clearMealForm() {
+  document.getElementById('mName').value = '';
+  document.getElementById('mCal').value  = '';
+  document.getElementById('mPro').value  = '';
+  document.getElementById('mCarb').value = '';
+  document.getElementById('mFat').value  = '';
+  document.getElementById('fPrev').style.display = 'none';
+  document.getElementById('aiBox').innerHTML = '';
+  var now = new Date();
+  document.getElementById('mDate').value = now.toISOString().slice(0,10);
+  document.getElementById('mTime').value = now.toTimeString().slice(0,5);
+  notify('Form cleared');
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
@@ -78,6 +93,9 @@ x solid var(--border)}
 .f label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .f input,.f select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none}
 .f input:focus,.f select:focus{border-color:var(--accent)}
+.f input[type="date"]{cursor:pointer}
+.f input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer}
+.f input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 .btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
 .bp{background:var(--accent);color:#000}.bp:hover{background:#00ffca}
 .bs{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.bs:hover{border-color:var(--accent);color:var(--accent)}
@@ -209,7 +227,7 @@ tbody td{padding:11px 14px;font-size:13px}
     <div class="card">
       <div class="ctitle">Log Reading</div>
       <div class="fg">
-        <div class="f"><label>Date</label><input type="date" id="bpDate"></div>
+        <div class="f"><label>Date</label><input type="date" id="bpDate" style="cursor:pointer"></div>
         <div class="f"><label>Time</label><input type="time" id="bpTime"></div>
         <div class="f"><label>Systolic</label><input type="number" id="bpS" placeholder="120" min="60" max="250"></div>
         <div class="f"><label>Diastolic</label><input type="number" id="bpD" placeholder="80" min="40" max="150"></div>
@@ -254,7 +272,7 @@ tbody td{padding:11px 14px;font-size:13px}
       <div class="card">
         <div class="ctitle">Log Blood Sugar</div>
         <div class="fg">
-          <div class="f"><label>Date</label><input type="date" id="gDate"></div>
+          <div class="f"><label>Date</label><input type="date" id="gDate" style="cursor:pointer"></div>
           <div class="f"><label>Time</label><input type="time" id="gTime"></div>
           <div class="f"><label>Blood Sugar (mg/dL)</label><input type="number" id="gVal" placeholder="100" min="20" max="600"></div>
           <div class="f"><label>Type</label><select id="gTyp"><option value="fasting">Fasting</option><option value="before_meal">Before Meal</option><option value="after_meal">After Meal (2hr)</option><option value="bedtime">Bedtime</option><option value="random">Random</option></select></div>
@@ -302,35 +320,53 @@ tbody td{padding:11px 14px;font-size:13px}
 <!-- NUTRITION PANEL -->
 <div class="panel" id="panel-nutrition">
   <div class="dtotal">
-    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Today Calories</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--a3)" id="todCal">0 kcal</div></div>
-    <div style="text-align:right"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Daily Goal</div><div style="display:flex;align-items:center;gap:5px;margin-top:3px"><input type="number" id="calGoal" value="2000" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--a3);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;padding:4px 8px;width:75px;outline:none;text-align:center"><span style="font-size:10px;color:var(--muted)">kcal</span></div></div>
+    <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Today Calories</div><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--a3)" id="todCal">0 kcal</div></div>
+    <div style="text-align:right"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Daily Goal</div><div style="display:flex;align-items:center;gap:5px;margin-top:3px"><input type="number" id="calGoal" value="2000" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--a3);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;padding:4px 8px;width:80px;outline:none;text-align:center"><span style="font-size:11px;color:var(--muted)">kcal</span></div></div>
   </div>
   <div class="two">
     <div class="card">
-      <div class="ctitle">Analyze Food Plate</div>
+      <div class="ctitle">Log Meal</div>
+
+      <!-- Always-visible entry form -->
+      <div class="fg" style="margin-bottom:14px">
+        <div class="f"><label>Meal Name</label><input type="text" id="mName" placeholder="e.g. Chicken salad"></div>
+        <div class="f"><label>Meal Type</label>
+          <select id="mTyp">
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="f"><label>Date</label><input type="date" id="mDate" style="cursor:pointer"></div>
+        <div class="f"><label>Time</label><input type="time" id="mTime"></div>
+      </div>
+
+      <!-- Macro inputs - always visible -->
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Nutrition Values</div>
+      <div class="mgrid" style="margin-bottom:14px">
+        <div class="mc"><div class="ml">Calories</div><input class="mi" style="border-color:var(--a3);color:var(--a3)" type="number" id="mCal" placeholder="0" min="0"><div class="mu">kcal</div></div>
+        <div class="mc"><div class="ml">Protein</div><input class="mi" style="border-color:var(--accent);color:var(--accent)" type="number" id="mPro" placeholder="0" min="0"><div class="mu">g</div></div>
+        <div class="mc"><div class="ml">Carbs</div><input class="mi" style="border-color:var(--a4);color:var(--a4)" type="number" id="mCarb" placeholder="0" min="0"><div class="mu">g</div></div>
+        <div class="mc"><div class="ml">Fat</div><input class="mi" style="border-color:var(--a2);color:var(--a2)" type="number" id="mFat" placeholder="0" min="0"><div class="mu">g</div></div>
+      </div>
+
+      <!-- Optional photo upload -->
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Photo & AI Analysis (Optional)</div>
       <div class="uz" id="uz" onclick="document.getElementById('ff').click()" ondragover="event.preventDefault();this.classList.add('dv')" ondragleave="this.classList.remove('dv')" ondrop="fDrop(event)">
-        <div style="font-size:28px;margin-bottom:8px">Plate</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Upload a photo of your plate</div>
-        <div style="font-size:10px;color:var(--muted);opacity:.6">Click or drag and drop</div>
+        <div style="font-size:24px;margin-bottom:6px">📷</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Upload food photo for AI analysis</div>
+        <div style="font-size:11px;color:var(--muted);opacity:.6">Click or drag and drop — values auto-fill</div>
       </div>
       <input type="file" id="ff" accept="image/*" style="display:none" onchange="fFile(event)">
-      <img id="fPrev" style="display:none;max-width:100%;max-height:240px;border-radius:9px;margin:10px auto;border:1px solid var(--border)" src="" alt="food">
-      <div id="aRes" style="display:none">
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:8px">Enter or edit values below</div>
-        <div class="mgrid">
-          <div class="mc"><div class="ml">Calories</div><input class="mi" style="border-color:var(--a3);color:var(--a3)" type="number" id="mCal" placeholder="0" min="0"><div class="mu">kcal</div></div>
-          <div class="mc"><div class="ml">Protein</div><input class="mi" style="border-color:var(--accent);color:var(--accent)" type="number" id="mPro" placeholder="0" min="0"><div class="mu">g</div></div>
-          <div class="mc"><div class="ml">Carbs</div><input class="mi" style="border-color:var(--a4);color:var(--a4)" type="number" id="mCarb" placeholder="0" min="0"><div class="mu">g</div></div>
-          <div class="mc"><div class="ml">Fat</div><input class="mi" style="border-color:var(--a2);color:var(--a2)" type="number" id="mFat" placeholder="0" min="0"><div class="mu">g</div></div>
-        </div>
-        <div id="aiBox" style="margin-bottom:12px"></div>
-        <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
-          <div class="f"><label>Meal Name</label><input type="text" id="mName" placeholder="e.g. Chicken salad"></div>
-          <div class="f"><label>Type</label><select id="mTyp"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="other">Other</option></select></div>
-          <div class="f"><label>Date</label><input type="date" id="mDate" style="cursor:pointer"></div>
-          <div class="f"><label>Time (optional)</label><input type="time" id="mTime"></div>
-        </div>
+      <img id="fPrev" style="display:none;max-width:100%;max-height:220px;border-radius:9px;margin:10px auto;border:1px solid var(--border);display:block" src="" alt="food">
+      <div id="aiBox" style="margin-bottom:12px"></div>
+      <div id="aRes" style="display:none"></div>
+
+      <div class="brow" style="margin-top:4px">
         <button class="btn bp" onclick="saveMeal()">+ Save Meal</button>
+        <button class="btn bs" onclick="clearMealForm()">Clear</button>
       </div>
     </div>
     <div class="card">
@@ -369,7 +405,7 @@ tbody td{padding:11px 14px;font-size:13px}
     <div class="card">
       <div class="ctitle">Log Session</div>
       <div class="fg">
-        <div class="f"><label>Date</label><input type="date" id="exDate"></div>
+        <div class="f"><label>Date</label><input type="date" id="exDate" style="cursor:pointer"></div>
         <div class="f"><label>Activity</label><select id="exTyp"><option>Running</option><option>Cycling</option><option>Swimming</option><option>Weight Training</option><option>Yoga</option><option>Sports</option><option>Walking</option><option>HIIT</option><option>Other</option></select></div>
         <div class="f"><label>Duration (min)</label><input type="number" id="exDur" placeholder="30" min="1"></div>
         <div class="f"><label>Avg BPM</label><input type="number" id="exAvg" placeholder="140"></div>
@@ -1137,12 +1173,11 @@ function procFood(file) {
   var r=new FileReader();
   r.onload=function(e){
     var p=document.getElementById('fPrev'); p.src=e.target.result; p.style.display='block';
-    document.getElementById('aRes').style.display='block';
     // Set today's date and time as default
     var now=new Date();
     var mde=document.getElementById('mDate'); if(mde) mde.value=now.toISOString().slice(0,10);
     var mte=document.getElementById('mTime'); if(mte) mte.value=now.toTimeString().slice(0,5);
-    document.getElementById('aiBox').innerHTML='<div class="abox" style="font-size:10px;color:var(--muted)">Analyzing with AI... or enter values manually below.<\/div>';
+    document.getElementById('aiBox').innerHTML='<div class="abox" style="font-size:11px;color:var(--a3)">🔍 Analyzing photo with AI... values will auto-fill below.<\/div>';
     analyzeFood(e.target.result);
   };
   r.readAsDataURL(file);
@@ -1187,11 +1222,10 @@ async function saveMeal() {
     time:new Date().toTimeString().slice(0,5), name:name, type:type,
     calories:cal, protein:pro, carbs:carb, fat:fat, imageThumb:''});
   localStorage.setItem(mk('ml'),JSON.stringify(mealData));
-  document.getElementById('aRes').style.display='none';
   document.getElementById('fPrev').style.display='none';
+  document.getElementById('aiBox').innerHTML='';
   document.getElementById('mName').value='';
   ['mCal','mPro','mCarb','mFat'].forEach(function(id){document.getElementById(id).value='';});
-  // Reset date to today for next entry
   var now=new Date();
   document.getElementById('mDate').value=now.toISOString().slice(0,10);
   document.getElementById('mTime').value=now.toTimeString().slice(0,5);
@@ -1550,16 +1584,18 @@ function printRep(){
     '<style>body{font-family:monospace;padding:36px;max-width:680px;margin:0 auto;font-size:12px;line-height:1.7}',
     'pre{white-space:pre-wrap}<\/style><\/head><body>',
     '<pre>',txt,'<\/pre>',
-    '<br><button id="pb">Print<\/button>\','+
-
-
-    '<script>document.getElementById("pb").onclick=function(){window.print();}<\/script>\','+
+    '<br><button id="pb">Print<\/button>',
+    '<script>document.getElementById("pb").onclick=function(){window.print();}<\/script>',
     '<\/body><\/html>'];
   doc.write(parts.join(''));
   doc.close();
   logRep('print');
   notify('Print window opened');
 }
+
+
+
+
 
 function logRep(ch) {
   var entry={id:Date.now(),date:new Date().toISOString().slice(0,10),time:new Date().toTimeString().slice(0,5),channel:ch,to:docP.drEmail||getM().drEmail||'--',period:sched.freq||'manual',bpCount:bpData.length,gluCount:gluData.length};
@@ -1811,6 +1847,20 @@ function fmtTime(timeStr) {
   var ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
   return h + ':' + m + ' ' + ampm;
+}
+
+function clearMealForm() {
+  document.getElementById('mName').value = '';
+  document.getElementById('mCal').value  = '';
+  document.getElementById('mPro').value  = '';
+  document.getElementById('mCarb').value = '';
+  document.getElementById('mFat').value  = '';
+  document.getElementById('fPrev').style.display = 'none';
+  document.getElementById('aiBox').innerHTML = '';
+  var now = new Date();
+  document.getElementById('mDate').value = now.toISOString().slice(0,10);
+  document.getElementById('mTime').value = now.toTimeString().slice(0,5);
+  notify('Form cleared');
 }
 </script>
 </body>
