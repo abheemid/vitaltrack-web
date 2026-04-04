@@ -327,6 +327,8 @@ tbody td{padding:10px 14px;font-size:11px}
         <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
           <div class="f"><label>Meal Name</label><input type="text" id="mName" placeholder="e.g. Chicken salad"></div>
           <div class="f"><label>Type</label><select id="mTyp"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="other">Other</option></select></div>
+          <div class="f"><label>Date</label><input type="date" id="mDate"></div>
+          <div class="f"><label>Time</label><input type="time" id="mTime"></div>
         </div>
         <button class="btn bp" onclick="saveMeal()">+ Save Meal</button>
       </div>
@@ -662,6 +664,8 @@ window.addEventListener('DOMContentLoaded', function() {
   document.getElementById('gDate').value  = fd(today);
   document.getElementById('gTime').value  = ft(today);
   document.getElementById('exDate').value = fd(today);
+  document.getElementById('mDate').value  = fd(today);
+  document.getElementById('mTime').value  = ft(today);
   initCharts();
   loadLocal();
   renderAll();
@@ -1144,6 +1148,10 @@ function procFood(file) {
   r.onload=function(e){
     var p=document.getElementById('fPrev'); p.src=e.target.result; p.style.display='block';
     document.getElementById('aRes').style.display='block';
+    // Set today's date and time as default
+    var now=new Date();
+    var mde=document.getElementById('mDate'); if(mde) mde.value=now.toISOString().slice(0,10);
+    var mte=document.getElementById('mTime'); if(mte) mte.value=now.toTimeString().slice(0,5);
     document.getElementById('aiBox').innerHTML='<div class="abox" style="font-size:10px;color:var(--muted)">Analyzing with AI... or enter values manually below.<\/div>';
     analyzeFood(e.target.result);
   };
@@ -1175,8 +1183,11 @@ async function saveMeal() {
   var fat=parseInt(document.getElementById('mFat').value)||0;
   var name=document.getElementById('mName').value||'Meal';
   var type=document.getElementById('mTyp').value;
-  var today=new Date().toISOString().slice(0,10);
-  var mealTs = today+'T'+new Date().toTimeString().slice(0,5)+':00';
+  var mDateEl = document.getElementById('mDate');
+  var mTimeEl = document.getElementById('mTime');
+  var today   = (mDateEl && mDateEl.value) ? mDateEl.value : new Date().toISOString().slice(0,10);
+  var mTime   = (mTimeEl && mTimeEl.value) ? mTimeEl.value : new Date().toTimeString().slice(0,5);
+  var mealTs  = today + 'T' + mTime + ':00';
   var row = {user_id:USER_ID, member_id:aId, meal_time:mealTs, meal_name:name, meal_type:type,
     calories:cal, protein_g:pro, carbs_g:carb, fat_g:fat};
   ss('busy','Saving meal...');
@@ -1190,6 +1201,10 @@ async function saveMeal() {
   document.getElementById('fPrev').style.display='none';
   document.getElementById('mName').value='';
   ['mCal','mPro','mCarb','mFat'].forEach(function(id){document.getElementById(id).value='';});
+  // Reset date to today for next entry
+  var now=new Date();
+  document.getElementById('mDate').value=now.toISOString().slice(0,10);
+  document.getElementById('mTime').value=now.toTimeString().slice(0,5);
   renderMeals(); updMacroProg();
   notify('Meal saved');
 }
@@ -1205,18 +1220,48 @@ async function delMeal(id) {
 function renderMeals() {
   var today=new Date().toISOString().slice(0,10);
   var tm=mealData.filter(function(m){return m.date===today;});
-  document.getElementById('todCal').textContent=tm.reduce(function(a,b){return a+b.calories;},0)+' kcal';
+  var todCal=tm.reduce(function(a,b){return a+b.calories;},0);
+  document.getElementById('todCal').textContent=todCal+' kcal';
+
   var wrap=document.getElementById('mLog');
-  if(!mealData.length){wrap.innerHTML='<div class="es"><div class="ei">Meals<\/div><div class="et">No meals logged. Upload a food photo to get started.<\/div><\/div>';return;}
-  wrap.innerHTML=mealData.slice(0,20).map(function(m){
-    var mt=(m.type||'').toLowerCase();
-    return '<div class="fi"><div style="width:40px;height:40px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+(mt==='breakfast'?'AM':mt==='lunch'?'PM':mt==='dinner'?'Eve':'Snk')+'<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+m.name+' <span class="tag">'+m.type+'<\/span><\/div><div style="font-size:10px;color:var(--muted)">'+m.date+' '+m.time+' - P:'+m.protein+'g C:'+m.carbs+'g F:'+m.fat+'g<\/div><\/div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:var(--a3)">'+m.calories+'<\/div><button class="db" onclick="delMeal(\''+m.id+'\')">Del<\/button><\/div>';
-  }).join('');
-  var todM=mealData.filter(function(m){return m.date===today;});
-  macCh.data.datasets[0].data=[todM.reduce(function(a,b){return a+b.protein;},0)||1, todM.reduce(function(a,b){return a+b.carbs;},0)||1, todM.reduce(function(a,b){return a+b.fat;},0)||1];
+  if(!mealData.length){
+    wrap.innerHTML='<div class="es"><div class="ei">Meals<\/div><div class="et">No meals logged yet. Upload a food photo or enter manually.<\/div><\/div>';
+    macCh.data.datasets[0].data=[1,1,1]; macCh.update();
+    return;
+  }
+
+  var typeIcon=function(t){t=(t||'').toLowerCase();return t==='breakfast'?'AM':t==='lunch'?'PM':t==='dinner'?'EVE':t==='snack'?'SNK':'OTH';};
+  var typeCap=function(t){return t?t.charAt(0).toUpperCase()+t.slice(1):'Meal';};
+  var typeColor=function(t){t=(t||'').toLowerCase();return t==='breakfast'?'var(--a3)':t==='lunch'?'var(--accent)':t==='dinner'?'var(--a4)':t==='snack'?'var(--a2)':'var(--muted)';};
+
+  wrap.innerHTML='<table><thead><tr>'+
+    '<th>Date<\/th><th>Time<\/th><th>Meal<\/th><th>Type<\/th>'+
+    '<th style="color:var(--a3)">Cal<\/th><th style="color:var(--accent)">Protein<\/th>'+
+    '<th style="color:var(--a4)">Carbs<\/th><th style="color:var(--a2)">Fat<\/th><th><\/th>'+
+    '<\/tr><\/thead><tbody>'+
+  mealData.map(function(m){
+    var tc=typeColor(m.type);
+    return '<tr>'+
+      '<td style="font-size:11px;font-weight:500">'+m.date+'<\/td>'+
+      '<td style="font-size:10px;color:var(--muted)">'+m.time+'<\/td>'+
+      '<td style="font-size:11px">'+m.name+'<\/td>'+
+      '<td><span class="tag" style="color:'+tc+'">'+typeCap(m.type)+'<\/span><\/td>'+
+      '<td style="font-family:Syne,sans-serif;font-weight:700;color:var(--a3)">'+m.calories+'<\/td>'+
+      '<td style="color:var(--accent)">'+m.protein+'g<\/td>'+
+      '<td style="color:var(--a4)">'+m.carbs+'g<\/td>'+
+      '<td style="color:var(--a2)">'+m.fat+'g<\/td>'+
+      '<td><button class="db" onclick="delMeal(&quot;'+m.id+'&quot;)">Del<\/button><\/td>'+
+    '<\/tr>';
+  }).join('')+
+  '<\/tbody><\/table>';
+
+  // Update macro chart
+  var tp=tm.reduce(function(a,b){return a+b.protein;},0)||1;
+  var tc2=tm.reduce(function(a,b){return a+b.carbs;},0)||1;
+  var tf=tm.reduce(function(a,b){return a+b.fat;},0)||1;
+  macCh.data.datasets[0].data=[tp,tc2,tf];
   macCh.update();
 }
-
 function updMacroProg() {
   var today=new Date().toISOString().slice(0,10);
   var tm=mealData.filter(function(m){return m.date===today;});
