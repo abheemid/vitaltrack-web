@@ -6,26 +6,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VitalTrack — Family Health Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+// ── DATE / TIME FORMATTING HELPERS ───────────────────────────
+function fmtDate(dateStr) {
+  if (!dateStr) return '--';
+  var d = new Date(dateStr + 'T00:00:00');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var today  = new Date().toISOString().slice(0,10);
+  var yest   = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if (dateStr === today) return 'Today';
+  if (dateStr === yest)  return 'Yesterday';
+  return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+function fmtTime(timeStr) {
+  if (!timeStr) return '';
+  var parts = timeStr.split(':');
+  var h = parseInt(parts[0]), m = parts[1];
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#222733;--accent:#00e5b4;--a2:#ff6b6b;--a3:#ffbe0b;--a4:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--danger:#ff4757;--good:#00e5b4;--warn:#ffbe0b}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:13px;line-height:1.6}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,180,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,180,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 .app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 20px 60px}
 header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:10px}
-.logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent)}
+.logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--accent)}
 .live-badge{display:flex;align-items:center;gap:7px;background:rgba(0,229,180,.08);border:1px solid rgba(0,229,180,.2);padding:5px 12px;border-radius:20px;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
 .dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .syncbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:18px;font-size:11px;flex-wrap:wrap}
 .syncdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
-.syncmsg{color:var(--muted);flex:1}
+.syncmsg{color:var(--muted);flex:1;font-size:12px}
 .syncbtn{background:rgba(0,229,180,.1);border:1px solid rgba(0,229,180,.3);border-radius:6px;color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;cursor:pointer;margin-left:auto}
 .tabs{display:flex;gap:3px;margin-bottom:24px;background:var(--surface);padding:5px;border-radius:10px;flex-wrap:wrap}
-.tab{padding:8px 14px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.tab{padding:9px 16px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
 .tab.active{background:var(--surface2);color:var(--text);border:1p
 // ── OVERVIEW MEMBER BANNER ────────────────────────────────────
 function updateOvBanner() {
@@ -64,33 +87,33 @@ function updateOvBanner() {
 x solid var(--border)}
 .panel{display:none}.panel.active{display:block;animation:fadeIn .25s ease}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:18px}
-.ctitle{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:16px}
+.ctitle{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
 @media(max-width:800px){.two{grid-template-columns:1fr}}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
 .sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--cc,var(--accent))}
-.slabel{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px}
-.sval{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--cc,var(--accent));line-height:1}
+.slabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.sval{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--cc,var(--accent));line-height:1}
 .sunit{font-size:10px;color:var(--muted);margin-top:3px}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
 .f{display:flex;flex-direction:column;gap:4px}
-.f label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.f input,.f select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:9px 10px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.f label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.f input,.f select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none}
 .f input:focus,.f select:focus{border-color:var(--accent)}
-.btn{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
 .bp{background:var(--accent);color:#000}.bp:hover{background:#00ffca}
 .bs{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.bs:hover{border-color:var(--accent);color:var(--accent)}
 .bw{background:rgba(77,159,255,.1);color:var(--a4);border:1px solid rgba(77,159,255,.3)}
 .brow{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
 .tw{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px}
 table{width:100%;border-collapse:collapse}
-thead th{padding:10px 14px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--border)}
+thead th{padding:11px 14px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.03)}
 tbody tr:hover{background:rgba(255,255,255,.02)}
 tbody tr:last-child{border-bottom:none}
-tbody td{padding:10px 14px;font-size:11px}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+tbody td{padding:11px 14px;font-size:13px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .bn{background:rgba(0,229,180,.12);color:var(--good)}
 .be{background:rgba(255,190,11,.12);color:var(--warn)}
 .bh{background:rgba(255,71,87,.12);color:var(--danger)}
@@ -139,7 +162,7 @@ tbody td{padding:10px 14px;font-size:11px}
 .sw{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .swbtn{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .swwrap{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
-.swlbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;max-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swlbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;max-width:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mbanner{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
 .fi{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.03)}
 .fi:last-child{border-bottom:none}
@@ -217,7 +240,7 @@ tbody td{padding:10px 14px;font-size:11px}
         <div class="f"><label>Arm</label><select id="bpA"><option value="left">Left</option><option value="right">Right</option></select></div>
       </div>
       <div class="f" style="margin-bottom:12px"><label>Notes</label><input type="text" id="bpN" placeholder="e.g. after walk..."></div>
-      <div class="brow"><button class="btn bp" onclick="saveBP()">+ Log Reading</button><button class="btn bw" onclick="simWBP()">Watch Sync</button></div>
+      <div class="brow"><button class="btn bp" onclick="saveBP()">+ Log Reading</button></div>
     </div>
     <div class="card">
       <div class="ctitle">BP Reference</div>
@@ -262,7 +285,7 @@ tbody td{padding:10px 14px;font-size:11px}
           <div class="f"><label>Insulin/Meds</label><input type="text" id="gMeds" placeholder="e.g. 10u Insulin"></div>
         </div>
         <div class="f" style="margin-bottom:12px"><label>Notes</label><input type="text" id="gNotes" placeholder="e.g. after exercise..."></div>
-        <div class="brow"><button class="btn bp" onclick="saveGlu()">+ Log Reading</button><button class="btn bw" onclick="simCGM()">CGM Sync</button></div>
+        <div class="brow"><button class="btn bp" onclick="saveGlu()">+ Log Reading</button></div>
       </div>
       <div class="card">
         <div class="ctitle">A1C History</div>
@@ -327,8 +350,8 @@ tbody td{padding:10px 14px;font-size:11px}
         <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
           <div class="f"><label>Meal Name</label><input type="text" id="mName" placeholder="e.g. Chicken salad"></div>
           <div class="f"><label>Type</label><select id="mTyp"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="other">Other</option></select></div>
-          <div class="f"><label>Date</label><input type="date" id="mDate"></div>
-          <div class="f"><label>Time</label><input type="time" id="mTime"></div>
+          <div class="f"><label>Date</label><input type="date" id="mDate" style="cursor:pointer"></div>
+          <div class="f"><label>Time (optional)</label><input type="time" id="mTime"></div>
         </div>
         <button class="btn bp" onclick="saveMeal()">+ Save Meal</button>
       </div>
@@ -990,12 +1013,7 @@ async function saveBP() {
   notify('BP reading saved');
 }
 
-function simWBP() {
-  document.getElementById('bpS').value = Math.floor(Math.random()*40)+105;
-  document.getElementById('bpD').value = Math.floor(Math.random()*25)+65;
-  document.getElementById('bpP').value = Math.floor(Math.random()*40)+60;
-  notify('Watch reading synced');
-}
+
 
 async function delBP(id) {
   await sbDel('vitals', id);
@@ -1022,7 +1040,7 @@ function renderBP() {
   var tb=document.getElementById('bpTB');
   if (!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">BP<\/div><div class="et">No readings found.<\/div><\/div><\/td><\/tr>';return;}
   tb.innerHTML=f.map(function(e){var s=bpStat(e.sys,e.dia);
-    return '<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b">'+e.sys+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#4d9fff">'+e.dia+'<\/td><td>'+(e.pulse||'--')+'<\/td><td><span class="tag">'+e.arm+'<\/span><\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delBP(\''+e.id+'\')">Del<\/button><\/td><\/tr>';
+    return '<tr><td>'+fmtDate(e.date)+' '+fmtTime(e.time)+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#ff6b6b">'+e.sys+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:#4d9fff">'+e.dia+'<\/td><td>'+(e.pulse||'--')+'<\/td><td><span class="tag">'+e.arm+'<\/span><\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delBP(\''+e.id+'\')">Del<\/button><\/td><\/tr>';
   }).join('');
 }
 
@@ -1068,13 +1086,7 @@ async function saveGlu() {
   notify('Glucose reading saved');
 }
 
-function simCGM() {
-  var types=['fasting','before_meal','after_meal','bedtime','random'];
-  var t=types[Math.floor(Math.random()*types.length)];
-  document.getElementById('gVal').value = t==='fasting'?Math.floor(Math.random()*60)+80:t==='after_meal'?Math.floor(Math.random()*100)+110:Math.floor(Math.random()*80)+90;
-  document.getElementById('gTyp').value = t;
-  notify('CGM reading synced');
-}
+
 
 async function delGlu(id) {
   await sbDel('vitals', id);
@@ -1100,7 +1112,7 @@ function renderGlu() {
   var tb=document.getElementById('gluTB');
   if(!f.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">Glucose<\/div><div class="et">No readings found.<\/div><\/div><\/td><\/tr>';return;}
   var col=function(v){return v==='bn'?'#34d399':v==='be'?'var(--warn)':'var(--danger)';};
-  tb.innerHTML=f.map(function(e){var s=gluStat(e.value,e.type);return '<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:'+col(s.cls)+'">'+e.value+' <span style="font-size:9px;color:var(--muted)">mg/dL<\/span><\/td><td><span class="tag">'+(tl[e.type]||e.type)+'<\/span><\/td><td>'+(e.a1c?e.a1c+'%':'--')+'<\/td><td style="font-size:10px;color:var(--muted)">'+(e.meds||'--')+'<\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delGlu(\''+e.id+'\')">Del<\/button><\/td><\/tr>';}).join('');
+  tb.innerHTML=f.map(function(e){var s=gluStat(e.value,e.type);return '<tr><td>'+fmtDate(e.date)+' '+fmtTime(e.time)+'<\/td><td style="font-family:Syne,sans-serif;font-weight:700;color:'+col(s.cls)+'">'+e.value+' <span style="font-size:9px;color:var(--muted)">mg/dL<\/span><\/td><td><span class="tag">'+(tl[e.type]||e.type)+'<\/span><\/td><td>'+(e.a1c?e.a1c+'%':'--')+'<\/td><td style="font-size:10px;color:var(--muted)">'+(e.meds||'--')+'<\/td><td><span class="badge '+s.cls+'">'+s.label+'<\/span><\/td><td style="font-size:10px;color:var(--muted)">'+(e.notes||'')+'<\/td><td><button class="db" onclick="delGlu(\''+e.id+'\')">Del<\/button><\/td><\/tr>';}).join('');
 }
 
 function clearGluF(){['fGT','fGF','fGTo'].forEach(function(id){document.getElementById(id).value='';});renderGlu();}
@@ -1242,8 +1254,8 @@ function renderMeals() {
   mealData.map(function(m){
     var tc=typeColor(m.type);
     return '<tr>'+
-      '<td style="font-size:11px;font-weight:500">'+m.date+'<\/td>'+
-      '<td style="font-size:10px;color:var(--muted)">'+m.time+'<\/td>'+
+      '<td style="font-size:11px;font-weight:500">'+fmtDate(m.date)+'<\/td>'+
+      '<td style="font-size:10px;color:var(--muted)">'+fmtTime(m.time)+'<\/td>'+
       '<td style="font-size:11px">'+m.name+'<\/td>'+
       '<td><span class="tag" style="color:'+tc+'">'+typeCap(m.type)+'<\/span><\/td>'+
       '<td style="font-family:Syne,sans-serif;font-weight:700;color:var(--a3)">'+m.calories+'<\/td>'+
@@ -1338,7 +1350,7 @@ function renderEx() {
   var s=exData.filter(function(e){return e.type!=='HR Log';});
   if(!s.length){wrap.innerHTML='<div class="es"><div class="ei">Exercise<\/div><div class="et">No sessions logged yet.<\/div><\/div>';return;}
   wrap.innerHTML=s.slice(0,20).map(function(e){var z=e.avgBPM?hrZone(e.avgBPM):null;
-    return '<div class="ae"><div style="font-size:16px;width:32px;text-align:center">Run<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+e.type+'<\/div><div style="font-size:10px;color:var(--muted)">'+e.date+' - '+e.duration+'min'+(e.calories?' - '+e.calories+' kcal':'')+(e.notes?' - '+e.notes:'')+'<\/div>'+(z?'<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 6px;margin-top:2px;display:inline-block">'+z.label+'<\/span>':'')+'<\/div><div style="text-align:right">'+(e.avgBPM?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--a2)">'+e.avgBPM+'<\/div><div style="font-size:9px;color:var(--muted)">avg BPM<\/div>':'')+(e.maxBPM?'<div style="font-size:9px;color:var(--muted)">max: '+e.maxBPM+'<\/div>':'')+'<\/div><button class="db" onclick="delEx(\''+e.id+'\')">Del<\/button><\/div>';
+    return '<div class="ae"><div style="font-size:16px;width:32px;text-align:center">Run<\/div><div style="flex:1"><div style="font-size:11px;font-weight:500">'+e.type+'<\/div><div style="font-size:10px;color:var(--muted)">'+fmtDate(e.date)+' - '+e.duration+'min'+(e.calories?' - '+e.calories+' kcal':'')+(e.notes?' - '+e.notes:'')+'<\/div>'+(z?'<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 6px;margin-top:2px;display:inline-block">'+z.label+'<\/span>':'')+'<\/div><div style="text-align:right">'+(e.avgBPM?'<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--a2)">'+e.avgBPM+'<\/div><div style="font-size:9px;color:var(--muted)">avg BPM<\/div>':'')+(e.maxBPM?'<div style="font-size:9px;color:var(--muted)">max: '+e.maxBPM+'<\/div>':'')+'<\/div><button class="db" onclick="delEx(\''+e.id+'\')">Del<\/button><\/div>';
   }).join('');
 }
 
@@ -1486,11 +1498,11 @@ function buildReport() {
   var sec=sched.sections||'all';
   if(sec==='all'||sec==='bp_glu'||sec==='bp'){
     rep+='BLOOD PRESSURE ('+rBP.length+' readings)\n'+sep+'\n';
-    if(rBP.length){var aS=Math.round(rBP.reduce(function(a,b){return a+b.sys;},0)/rBP.length), aD=Math.round(rBP.reduce(function(a,b){return a+b.dia;},0)/rBP.length);rep+='Average: '+aS+'/'+aD+' mmHg\nLatest: '+rBP[0].sys+'/'+rBP[0].dia+' on '+rBP[0].date+'\n';var cr=rBP.filter(function(e){return e.sys>=180||e.dia>=120;});if(cr.length)rep+='CRISIS readings: '+cr.length+'\n';rBP.slice(0,10).forEach(function(e){rep+='  '+e.date+' '+e.time+' | '+e.sys+'/'+e.dia+' | '+e.arm+' arm'+(e.notes?' | '+e.notes:'')+'\n';});}else rep+='No BP readings this period.\n'; rep+='\n';
+    if(rBP.length){var aS=Math.round(rBP.reduce(function(a,b){return a+b.sys;},0)/rBP.length), aD=Math.round(rBP.reduce(function(a,b){return a+b.dia;},0)/rBP.length);rep+='Average: '+aS+'/'+aD+' mmHg\nLatest: '+rBP[0].sys+'/'+rBP[0].dia+' on '+rBP[0].date+'\n';var cr=rBP.filter(function(e){return e.sys>=180||e.dia>=120;});if(cr.length)rep+='CRISIS readings: '+cr.length+'\n';rBP.slice(0,10).forEach(function(e){rep+='  '+fmtDate(e.date)+' '+fmtTime(e.time)+' | '+e.sys+'/'+e.dia+' | '+e.arm+' arm'+(e.notes?' | '+e.notes:'')+'\n';});}else rep+='No BP readings this period.\n'; rep+='\n';
   }
   if(sec==='all'||sec==='bp_glu'||sec==='glu'){
     rep+='BLOOD GLUCOSE ('+rGlu.length+' readings)\n'+sep+'\n';
-    if(rGlu.length){var aG=Math.round(rGlu.reduce(function(a,b){return a+b.value;},0)/rGlu.length);rep+='Average: '+aG+' mg/dL\nHigh (>180): '+rGlu.filter(function(e){return e.value>180;}).length+'  Low (<70): '+rGlu.filter(function(e){return e.value<70;}).length+'\n';var la=gluData.find(function(e){return e.a1c;});if(la)rep+='Last A1C: '+la.a1c+'%\n';rGlu.slice(0,10).forEach(function(e){var tl={fasting:'Fasting',before_meal:'Pre-Meal',after_meal:'Post-Meal',bedtime:'Bedtime',random:'Random'};rep+='  '+e.date+' '+e.time+' | '+e.value+' mg/dL | '+(tl[e.type]||e.type)+(e.meds?' | '+e.meds:'')+(e.notes?' | '+e.notes:'')+'\n';});}else rep+='No glucose readings this period.\n'; rep+='\n';
+    if(rGlu.length){var aG=Math.round(rGlu.reduce(function(a,b){return a+b.value;},0)/rGlu.length);rep+='Average: '+aG+' mg/dL\nHigh (>180): '+rGlu.filter(function(e){return e.value>180;}).length+'  Low (<70): '+rGlu.filter(function(e){return e.value<70;}).length+'\n';var la=gluData.find(function(e){return e.a1c;});if(la)rep+='Last A1C: '+la.a1c+'%\n';rGlu.slice(0,10).forEach(function(e){var tl={fasting:'Fasting',before_meal:'Pre-Meal',after_meal:'Post-Meal',bedtime:'Bedtime',random:'Random'};rep+='  '+fmtDate(e.date)+' '+fmtTime(e.time)+' | '+e.value+' mg/dL | '+(tl[e.type]||e.type)+(e.meds?' | '+e.meds:'')+(e.notes?' | '+e.notes:'')+'\n';});}else rep+='No glucose readings this period.\n'; rep+='\n';
   }
   if(sec==='all'){
     rep+='EXERCISE ('+rEx.length+' sessions)\n'+sep+'\n';
@@ -1579,7 +1591,7 @@ function renderRLog() {
   var wrap=document.getElementById('rLog');
   if(!rLog.length){wrap.innerHTML='<div class="es"><div class="ei">Reports<\/div><div class="et">No reports sent yet.<\/div><\/div>';return;}
   var ic={email:'Email',sms:'SMS',print:'Print',sent:'Sent',manual:'Manual'};
-  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>Channel<\/th><th>Sent To<\/th><th>Period<\/th><th>BP<\/th><th>Glucose<\/th><\/tr><\/thead><tbody>'+rLog.map(function(e){return '<tr><td>'+e.date+' '+e.time+'<\/td><td>'+(ic[e.channel]||e.channel)+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.to+'<\/td><td><span class="tag">'+e.period+'<\/span><\/td><td>'+e.bpCount+'<\/td><td>'+e.gluCount+'<\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
+  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>Channel<\/th><th>Sent To<\/th><th>Period<\/th><th>BP<\/th><th>Glucose<\/th><\/tr><\/thead><tbody>'+rLog.map(function(e){return '<tr><td>'+fmtDate(e.date)+' '+fmtTime(e.time)+'<\/td><td>'+(ic[e.channel]||e.channel)+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.to+'<\/td><td><span class="tag">'+e.period+'<\/span><\/td><td>'+e.bpCount+'<\/td><td>'+e.gluCount+'<\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
 }
 
 function sendMRep(memberId) {
@@ -1654,7 +1666,7 @@ function cancelImp(type){
 function renderILog(){
   var wrap=document.getElementById('iLog');
   if(!iLog.length){wrap.innerHTML='<div class="es"><div class="ei">Import<\/div><div class="et">No imports yet.<\/div><\/div>';return;}
-  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>File<\/th><th>Type<\/th><th>Added<\/th><th>Skipped<\/th><\/tr><\/thead><tbody>'+iLog.map(function(e){return'<tr><td>'+e.date+' '+e.time+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.fn+'<\/td><td><span class="tag">'+e.type+'<\/span><\/td><td><span class="ch cn">+'+e.added+'<\/span><\/td><td><span class="ch cd">'+e.dupes+'<\/span><\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
+  wrap.innerHTML='<table><thead><tr><th>Date<\/th><th>File<\/th><th>Type<\/th><th>Added<\/th><th>Skipped<\/th><\/tr><\/thead><tbody>'+iLog.map(function(e){return'<tr><td>'+fmtDate(e.date)+' '+fmtTime(e.time)+'<\/td><td style="font-size:10px;color:var(--muted)">'+e.fn+'<\/td><td><span class="tag">'+e.type+'<\/span><\/td><td><span class="ch cn">+'+e.added+'<\/span><\/td><td><span class="ch cd">'+e.dupes+'<\/span><\/td><\/tr>';}).join('')+'<\/tbody><\/table>';
 }
 
 // ── CHARTS ────────────────────────────────────────────────────
@@ -1728,7 +1740,7 @@ function renderHRHistory() {
     var status = e.avgBPM >= 130 ? 'Exercise' : e.avgBPM >= 100 ? 'Active' : e.avgBPM < 70 ? 'Resting' : 'Normal';
     var stCls  = e.avgBPM >= 130 ? 'bh' : e.avgBPM >= 100 ? 'be' : 'bn';
     return '<tr>' +
-      '<td>'+e.date+' '+e.time+'<\/td>' +
+      '<td>'+fmtDate(e.date)+' '+fmtTime(e.time)+'<\/td>' +
       '<td style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:'+col+'">'+bpm+' <span style="font-size:9px;color:var(--muted)">BPM<\/span><\/td>' +
       '<td><span class="badge '+stCls+'">'+status+'<\/span><\/td>' +
       '<td>'+(z ? '<span class="zb '+z.cls+'" style="font-size:9px;padding:2px 7px">'+z.label+'<\/span>' : '--')+'<\/td>' +
